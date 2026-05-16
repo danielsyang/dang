@@ -57,6 +57,18 @@ fn builtin_last(args: Vec<Object>) -> Object {
     }
 }
 
+fn builtin_print(args: Vec<Object>) -> Object {
+    let line = args
+        .iter()
+        .map(|a| a.to_string())
+        .collect::<Vec<_>>()
+        .join(" ");
+
+    println!("{}", line);
+
+    Object::None
+}
+
 pub fn eval_block(block: &Block, env: &mut Environment) -> Object {
     let mut result = Object::None;
 
@@ -96,11 +108,16 @@ pub fn builtin_functions() -> Environment {
     };
     let last_func = Object::Builtin { func: builtin_last };
 
+    let print_func = Object::Builtin {
+        func: builtin_print,
+    };
+
     let mut store: HashMap<String, Object> = HashMap::new();
 
     store.insert(String::from("len"), len_func);
     store.insert(String::from("first"), first_func);
     store.insert(String::from("last"), last_func);
+    store.insert(String::from("print"), print_func);
 
     Environment { store }
 }
@@ -291,8 +308,8 @@ mod test {
         let mut env = Environment::new();
         let inputs = [
             "fn abc(x) {
-                return fn inner(y) { 
-                    return x + y; 
+                return fn inner(y) {
+                    return x + y;
                 };
             };
             let first = abc(2);
@@ -300,12 +317,12 @@ mod test {
             "let abcd = fn(a, b) {
                 let c = a + b;
 
-                fn inner(d) { 
-                    return c + d; 
+                fn inner(d) {
+                    return c + d;
                 };
 
                 return inner;
-            }; 
+            };
             let first = abcd(2, 2);
             first(2);",
         ];
@@ -467,6 +484,23 @@ mod test {
         let expected = ["None"];
 
         for (i, input) in inputs.iter().enumerate() {
+            let program = Parser::build_ast(input);
+            let result = program.eval_statements(&mut env);
+            assert_eq!(result.to_string(), expected.get(i).unwrap().to_string());
+        }
+    }
+
+    #[test]
+    fn len_of_string() {
+        let inputs = [
+            r#"len("Hello")"#,
+            r#"len([1, 2, 3])"#,
+            r#"first([10, 20, 30])"#,
+        ];
+        let expected = [5, 3, 10];
+
+        for (i, input) in inputs.iter().enumerate() {
+            let mut env = Environment::new();
             let program = Parser::build_ast(input);
             let result = program.eval_statements(&mut env);
             assert_eq!(result.to_string(), expected.get(i).unwrap().to_string());
