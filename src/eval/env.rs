@@ -26,3 +26,15 @@ impl Environment {
         self.store.insert(name, val);
     }
 }
+
+impl Clone for Environment {
+    fn clone(&self) -> Self {
+        let mut next_store = Self::new();
+
+        for (k, v) in self.store.iter() {
+            next_store.set(k.to_string(), v.clone());
+        }
+
+        return next_store;
+    }
+}

@@ -491,7 +491,7 @@ mod test {
     }
 
     #[test]
-    fn len_of_string() {
+    fn eval_len_of_string() {
         let inputs = [
             r#"len("Hello")"#,
             r#"len([1, 2, 3])"#,

@@ -279,10 +279,12 @@ impl Expression {
                 function,
                 arguments,
             } => {
-                let func = function.eval(env);
+                let mut function_context_env = env.clone();
+
+                let func = function.eval(&mut function_context_env);
                 let args = arguments
                     .iter()
-                    .map(|arg| arg.eval(env))
+                    .map(|arg| arg.eval(&mut function_context_env))
                     .collect::<Vec<_>>();
 
                 match (func, &args) {
@@ -298,7 +300,7 @@ impl Expression {
                         let mut error_idx = 0;
                         for (idx, param) in parameters.iter().enumerate() {
                             if let Some(arg) = args.get(idx) {
-                                env.set(param.clone(), arg.clone());
+                                function_context_env.set(param.clone(), arg.clone());
                             } else {
                                 error_idx = idx;
                                 has_error = true;
@@ -310,7 +312,7 @@ impl Expression {
                             return Object::Error(format!("Missing parameter: {}", error_idx));
                         }
 
-                        match eval_function_block(&body, env) {
+                        match eval_function_block(&body, &mut function_context_env) {
                             Some(r) => r,
                             None => Object::None,
                         }
