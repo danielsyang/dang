@@ -1,5 +1,5 @@
 use std::{
-    cell::{Ref, RefCell},
+    cell::RefCell,
     collections::{BTreeMap, HashMap},
     fmt::Display,
     hash::Hash,
@@ -272,9 +272,8 @@ impl Expression {
                     },
                 };
 
-                match identifier {
-                    Some(i) => env.borrow_mut().set(i.clone(), fun.clone()),
-                    None => {}
+                if let Some(i) = identifier {
+                    env.borrow_mut().set(i.clone(), fun.clone())
                 }
 
                 fun

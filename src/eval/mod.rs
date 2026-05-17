@@ -16,7 +16,7 @@ fn builtin_len(args: Vec<Object>) -> Object {
         ));
     }
 
-    match args.get(0).unwrap() {
+    match args.first().unwrap() {
         Object::String(s) => Object::Number(s.len().try_into().unwrap()),
         Object::Array(arr) => Object::Number(arr.len() as i64),
         _ => Object::Error(format!("invalid argument, got: {:?}", args)),
@@ -31,7 +31,7 @@ fn builtin_first(args: Vec<Object>) -> Object {
         ));
     }
 
-    match args.get(0).unwrap() {
+    match args.first().unwrap() {
         Object::Array(arr) => match arr.first() {
             None => Object::None,
             Some(v) => v.clone(),
@@ -48,7 +48,7 @@ fn builtin_last(args: Vec<Object>) -> Object {
         ));
     }
 
-    match args.get(0).unwrap() {
+    match args.first().unwrap() {
         Object::Array(arr) => match arr.last() {
             None => Object::None,
             Some(v) => v.clone(),

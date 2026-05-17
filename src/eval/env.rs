@@ -52,6 +52,6 @@ impl Clone for Environment {
             next_store.set(k.to_string(), v.clone());
         }
 
-        return next_store;
+        next_store
     }
 }

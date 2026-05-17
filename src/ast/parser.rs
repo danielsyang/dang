@@ -197,7 +197,7 @@ impl Parser {
                 return Expression::Error(format!(
                     "parse_expression: not yet implemented, got {:?}",
                     self.current_token.kind
-                ))
+                ));
             }
         };
 
@@ -945,7 +945,9 @@ mod test {
             }
         ";
 
-        let expected = ["while ( < Left Ident (i) , Right Number (10) ) { [Let(\"a\", Literal(Number(0))), Assignment(\"a\", Literal(Number(11)))] }"];
+        let expected = [
+            "while ( < Left Ident (i) , Right Number (10) ) { [Let(\"a\", Literal(Number(0))), Assignment(\"a\", Literal(Number(11)))] }",
+        ];
         let result = Parser::build_ast(input);
 
         for (i, curr) in result.statements.iter().enumerate() {

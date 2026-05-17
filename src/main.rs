@@ -28,14 +28,14 @@ struct Args {
 
 fn main() {
     let args = Args::parse();
-    let mut env = Rc::new(RefCell::new(Environment::new()));
+    let env = Rc::new(RefCell::new(Environment::new()));
 
     match args.file_name {
         Some(file_name) => {
             let input = read_file(&file_name);
 
             let program = Parser::build_ast(&input);
-            let obj = program.eval_statements(&mut env);
+            let obj = program.eval_statements(&env);
 
             println!("{}", obj);
         }
@@ -52,7 +52,7 @@ fn main() {
 
                 let program = Parser::build_ast(&buffer);
 
-                let obj = program.eval_statements(&mut env);
+                let obj = program.eval_statements(&env);
 
                 println!("{}", obj);
             }
