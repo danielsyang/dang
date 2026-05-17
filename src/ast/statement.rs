@@ -91,18 +91,18 @@ impl Statement {
             }
             Statement::Let(ident, exp) => {
                 let val = exp.eval(env, interner);
-                env.borrow_mut().set(ident, val.clone());
+                env.borrow_mut().set(*ident, val.clone());
 
                 val
             }
             Statement::Assignment(ident, exp) => {
                 let val = exp.eval(env, interner);
 
-                let existing = env.borrow().get(ident);
+                let existing = env.borrow().get(*ident);
 
                 match existing {
                     Some(_) => {
-                        env.borrow_mut().set(ident, val.clone());
+                        env.borrow_mut().set(*ident, val.clone());
                         val
                     }
                     None => Object::Error(format!(

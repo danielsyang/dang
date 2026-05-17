@@ -24,8 +24,8 @@ impl Environment {
         }))
     }
 
-    pub fn get(&self, name: &Symbol) -> Option<Object> {
-        let value_exists = self.store.get(name).cloned();
+    pub fn get(&self, name: Symbol) -> Option<Object> {
+        let value_exists = self.store.get(&name).cloned();
 
         match value_exists {
             Some(value) => Some(value),
@@ -36,7 +36,7 @@ impl Environment {
         }
     }
 
-    pub fn set(&mut self, name: &Symbol, val: Object) {
-        self.store.insert(*name, val);
+    pub fn set(&mut self, name: Symbol, val: Object) {
+        self.store.insert(name, val);
     }
 }

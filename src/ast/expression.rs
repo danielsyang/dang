@@ -358,8 +358,8 @@ impl Expression {
                     (_, _) => Object::Error(String::from("condition did not evaluate to boolean")),
                 }
             }
-            Expression::Identifier(ident) => match &env.borrow_mut().get(ident) {
-                Some(obj) => obj.clone(),
+            Expression::Identifier(ident) => match env.borrow().get(*ident) {
+                Some(obj) => obj,
                 None => Object::Error(format!(
                     "identifier not found: {}",
                     interner.resolve(*ident)
@@ -373,20 +373,20 @@ impl Expression {
                 let fun = match identifier {
                     Some(i) => Object::Function {
                         name: Some(*i),
-                        parameters: parameters.to_vec().clone(),
-                        body: body.to_vec().clone(),
+                        parameters: parameters.to_vec(),
+                        body: body.to_vec(),
                         env: env.clone(),
                     },
                     None => Object::Function {
                         name: None,
-                        parameters: parameters.to_vec().clone(),
-                        body: body.to_vec().clone(),
+                        parameters: parameters.to_vec(),
+                        body: body.to_vec(),
                         env: env.clone(),
                     },
                 };
 
                 if let Some(i) = identifier {
-                    env.borrow_mut().set(i, fun.clone())
+                    env.borrow_mut().set(*i, fun.clone())
                 }
 
                 fun
@@ -416,7 +416,7 @@ impl Expression {
                         let mut error_idx = 0;
                         for (idx, param) in parameters.iter().enumerate() {
                             if let Some(arg) = args.get(idx) {
-                                next_env.borrow_mut().set(param, arg.clone());
+                                next_env.borrow_mut().set(*param, arg.clone());
                             } else {
                                 error_idx = idx;
                                 has_error = true;
