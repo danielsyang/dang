@@ -1,4 +1,4 @@
-use crate::lex::token::TokenType;
+use crate::{intern::interner::Interner, lex::token::TokenType};
 
 use super::token::Token;
 
@@ -15,7 +15,7 @@ impl Lexer {
         }
     }
 
-    pub fn next_token(&mut self) -> Option<Token> {
+    pub fn next_token(&mut self, interner: &mut Interner) -> Option<Token> {
         if self.input.len() < self.position {
             return None;
         }
@@ -37,11 +37,14 @@ impl Lexer {
                 "fn" => return Some(Token::function()),
                 "true" => return Some(Token::boolean(true)),
                 "false" => return Some(Token::boolean(false)),
-                "return" => return Some(Token::new(TokenType::Return, word)),
-                "if" => return Some(Token::new(TokenType::If, word)),
-                "else" => return Some(Token::new(TokenType::Else, word)),
+                "return" => return Some(Token::new(TokenType::Return)),
+                "if" => return Some(Token::new(TokenType::If)),
+                "else" => return Some(Token::new(TokenType::Else)),
                 "while" => return Some(Token::while_token()),
-                _ => return Some(Token::identifier(word)),
+                _ => {
+                    let symbol = interner.intern(word.as_ref());
+                    return Some(Token::identifier(symbol));
+                }
             }
         }
 
@@ -54,23 +57,23 @@ impl Lexer {
             '=' => match self.peek() {
                 Some('=') => {
                     self.consume_char();
-                    Some(Token::new(TokenType::Eq, "==".to_string()))
+                    Some(Token::new(TokenType::Eq))
                 }
                 _ => Some(Token::assign_sign()),
             },
             '!' => match self.peek() {
                 Some('=') => {
                     self.consume_char();
-                    Some(Token::new(TokenType::NotEq, "!=".to_string()))
+                    Some(Token::new(TokenType::NotEq))
                 }
                 _ => Some(Token::bang()),
             },
             '.' => Some(Token::dot()),
             ';' => Some(Token::semicolon()),
-            '+' => Some(Token::new(TokenType::PlusSign, curr.to_string())),
-            '-' => Some(Token::new(TokenType::MinusSign, curr.to_string())),
-            '*' => Some(Token::new(TokenType::MultiplicationSign, curr.to_string())),
-            '/' => Some(Token::new(TokenType::SlashSign, curr.to_string())),
+            '+' => Some(Token::new(TokenType::PlusSign)),
+            '-' => Some(Token::new(TokenType::MinusSign)),
+            '*' => Some(Token::new(TokenType::MultiplicationSign)),
+            '/' => Some(Token::new(TokenType::SlashSign)),
             '{' => Some(Token::left_brace()),
             '}' => Some(Token::right_brace()),
             '(' => Some(Token::left_paren()),
@@ -206,15 +209,18 @@ impl Lexer {
 
 #[cfg(test)]
 mod test {
-    use crate::lex::{
-        lexer::Lexer,
-        token::{Token, TokenType},
+    use crate::{
+        intern::interner::Interner,
+        lex::{
+            lexer::Lexer,
+            token::{Token, TokenType},
+        },
     };
 
-    fn run_tokenizer(mut lex: Lexer) -> Vec<Token> {
+    fn run_tokenizer(mut lex: Lexer, interner: &mut Interner) -> Vec<Token> {
         let mut tokens: Vec<Token> = vec![];
 
-        while let Some(t) = lex.next_token() {
+        while let Some(t) = lex.next_token(interner) {
             match t.kind {
                 TokenType::Whitespace => {}
                 _ => tokens.push(t),
@@ -233,25 +239,31 @@ mod test {
         ";
 
         let lex = Lexer::new(input);
+        let mut interner = Interner::new();
+
+        let x_sym = interner.intern("x");
+        let y_sym = interner.intern("y");
+        let x1_sym = interner.intern("x1");
+
         let expected: Vec<Token> = vec![
             Token::new_let(),
-            Token::identifier("x".to_string()),
+            Token::identifier(x_sym),
             Token::assign_sign(),
             Token::int(512),
             Token::semicolon(),
             Token::new_let(),
-            Token::identifier("y".to_string()),
+            Token::identifier(y_sym),
             Token::assign_sign(),
             Token::int(256),
             Token::semicolon(),
             Token::new_let(),
-            Token::identifier("x1".to_string()),
+            Token::identifier(x1_sym),
             Token::assign_sign(),
             Token::int(128),
             Token::semicolon(),
             Token::eof(),
         ];
-        let result = run_tokenizer(lex);
+        let result = run_tokenizer(lex, &mut interner);
 
         assert_eq!(expected, result)
     }
@@ -269,39 +281,43 @@ mod test {
         ";
 
         let lex = Lexer::new(input);
+        let mut interner = Interner::new();
+
+        let x_sym = interner.intern("x");
+
         let expected: Vec<Token> = vec![
-            Token::new(TokenType::If, "if".to_string()),
+            Token::new(TokenType::If),
             Token::left_paren(),
-            Token::identifier("x".to_string()),
+            Token::identifier(x_sym),
             Token::lt(),
             Token::int(10),
             Token::right_paren(),
             Token::left_brace(),
-            Token::new(TokenType::Return, "return".to_string()),
+            Token::new(TokenType::Return),
             Token::int(10),
             Token::semicolon(),
             Token::right_brace(),
-            Token::new(TokenType::Else, "else".to_string()),
-            Token::new(TokenType::If, "if".to_string()),
+            Token::new(TokenType::Else),
+            Token::new(TokenType::If),
             Token::left_paren(),
-            Token::identifier("x".to_string()),
+            Token::identifier(x_sym),
             Token::gt(),
             Token::int(12),
             Token::right_paren(),
             Token::left_brace(),
-            Token::new(TokenType::Return, "return".to_string()),
+            Token::new(TokenType::Return),
             Token::int(20),
             Token::semicolon(),
             Token::right_brace(),
-            Token::new(TokenType::Else, "else".to_string()),
+            Token::new(TokenType::Else),
             Token::left_brace(),
-            Token::new(TokenType::Return, "return".to_string()),
+            Token::new(TokenType::Return),
             Token::int(30),
             Token::semicolon(),
             Token::right_brace(),
             Token::eof(),
         ];
-        let result = run_tokenizer(lex);
+        let result = run_tokenizer(lex, &mut interner);
 
         assert_eq!(expected, result)
     }
@@ -315,28 +331,35 @@ mod test {
         ";
 
         let lex = Lexer::new(input);
+        let mut interner = Interner::new();
+
+        let a_sym = interner.intern("a");
+        let x_sym = interner.intern("x");
+        let y_sym = interner.intern("y");
+        let my_func_sym = interner.intern("myFunc");
+
         let expected: Vec<Token> = vec![
             Token::new_let(),
-            Token::identifier("a".to_string()),
+            Token::identifier(a_sym),
             Token::assign_sign(),
             Token::function(),
             Token::left_paren(),
-            Token::identifier("x".to_string()),
+            Token::identifier(x_sym),
             Token::comma(),
-            Token::identifier("y".to_string()),
+            Token::identifier(y_sym),
             Token::right_paren(),
             Token::left_brace(),
             Token::right_brace(),
             Token::semicolon(),
             Token::function(),
-            Token::identifier("myFunc".to_string()),
+            Token::identifier(my_func_sym),
             Token::left_paren(),
             Token::right_paren(),
             Token::left_brace(),
             Token::right_brace(),
             Token::eof(),
         ];
-        let result = run_tokenizer(lex);
+        let result = run_tokenizer(lex, &mut interner);
 
         assert_eq!(expected, result)
     }
@@ -349,20 +372,25 @@ mod test {
         ";
 
         let lex = Lexer::new(input);
+        let mut interner = Interner::new();
+
+        let abc_sym = interner.intern("abc");
+        let cde_sym = interner.intern("cde");
+
         let expected: Vec<Token> = vec![
             Token::new_let(),
-            Token::identifier("abc".to_string()),
+            Token::identifier(abc_sym),
             Token::assign_sign(),
             Token::string("HELLO".to_string()),
             Token::semicolon(),
             Token::new_let(),
-            Token::identifier("cde".to_string()),
+            Token::identifier(cde_sym),
             Token::assign_sign(),
             Token::string("Hello world".to_string()),
             Token::semicolon(),
             Token::eof(),
         ];
-        let result = run_tokenizer(lex);
+        let result = run_tokenizer(lex, &mut interner);
 
         assert_eq!(expected, result)
     }
@@ -374,9 +402,13 @@ mod test {
         ";
 
         let lex = Lexer::new(input);
+        let mut interner = Interner::new();
+
+        let abc_sym = interner.intern("abc");
+
         let expected: Vec<Token> = vec![
             Token::new_let(),
-            Token::identifier("abc".to_string()),
+            Token::identifier(abc_sym),
             Token::assign_sign(),
             Token::left_bracket(),
             Token::int(1),
@@ -388,7 +420,7 @@ mod test {
             Token::semicolon(),
             Token::eof(),
         ];
-        let result = run_tokenizer(lex);
+        let result = run_tokenizer(lex, &mut interner);
 
         assert_eq!(expected, result)
     }
@@ -401,8 +433,12 @@ mod test {
         ";
 
         let lex = Lexer::new(input);
+        let mut interner = Interner::new();
+
+        let arr_sym = interner.intern("arr");
+
         let expected: Vec<Token> = vec![
-            Token::identifier("arr".to_string()),
+            Token::identifier(arr_sym),
             Token::left_bracket(),
             Token::int(1),
             Token::right_bracket(),
@@ -420,7 +456,7 @@ mod test {
             Token::semicolon(),
             Token::eof(),
         ];
-        let result = run_tokenizer(lex);
+        let result = run_tokenizer(lex, &mut interner);
 
         assert_eq!(expected, result)
     }
@@ -432,6 +468,8 @@ mod test {
         ";
 
         let lex = Lexer::new(input);
+        let mut interner = Interner::new();
+
         let expected: Vec<Token> = vec![
             Token::left_brace(),
             Token::string("foobar".to_string()),
@@ -440,7 +478,7 @@ mod test {
             Token::right_brace(),
             Token::eof(),
         ];
-        let result = run_tokenizer(lex);
+        let result = run_tokenizer(lex, &mut interner);
 
         assert_eq!(expected, result)
     }
@@ -453,6 +491,8 @@ mod test {
         ";
 
         let lex = Lexer::new(input);
+        let mut interner = Interner::new();
+
         let expected: Vec<Token> = vec![
             Token::int(1),
             Token::gte(),
@@ -464,7 +504,7 @@ mod test {
             Token::semicolon(),
             Token::eof(),
         ];
-        let result = run_tokenizer(lex);
+        let result = run_tokenizer(lex, &mut interner);
 
         assert_eq!(expected, result)
     }
@@ -477,6 +517,8 @@ mod test {
         ";
 
         let lex = Lexer::new(input);
+        let mut interner = Interner::new();
+
         let expected: Vec<Token> = vec![
             Token::int(5),
             Token::and(),
@@ -488,7 +530,7 @@ mod test {
             Token::semicolon(),
             Token::eof(),
         ];
-        let result = run_tokenizer(lex);
+        let result = run_tokenizer(lex, &mut interner);
 
         assert_eq!(expected, result)
     }
@@ -512,60 +554,70 @@ mod test {
         ";
 
         let lex = Lexer::new(input);
+        let mut interner = Interner::new();
+
+        let closure_sym = interner.intern("closure");
+        let a_sym = interner.intern("a");
+        let b_sym = interner.intern("b");
+        let c_sym = interner.intern("c");
+        let d_sym = interner.intern("d");
+        let closure2_sym = interner.intern("closure2");
+        let test_sym = interner.intern("test");
+
         let expected: Vec<Token> = vec![
             Token::new_let(),
-            Token::identifier("closure".into()),
+            Token::identifier(closure_sym),
             Token::assign_sign(),
             Token::function(),
             Token::left_paren(),
-            Token::identifier("a".into()),
+            Token::identifier(a_sym),
             Token::comma(),
-            Token::identifier("b".into()),
+            Token::identifier(b_sym),
             Token::right_paren(),
             Token::left_brace(),
             Token::new_let(),
-            Token::identifier("c".into()),
+            Token::identifier(c_sym),
             Token::assign_sign(),
-            Token::identifier("a".into()),
-            Token::new(TokenType::PlusSign, "+".into()),
-            Token::identifier("b".into()),
+            Token::identifier(a_sym),
+            Token::new(TokenType::PlusSign),
+            Token::identifier(b_sym),
             Token::semicolon(),
-            Token::new(TokenType::Return, "return".into()),
+            Token::new(TokenType::Return),
             Token::function(),
             Token::left_paren(),
-            Token::identifier("d".into()),
+            Token::identifier(d_sym),
             Token::right_paren(),
             Token::left_brace(),
-            Token::new(TokenType::Return, "return".into()),
-            Token::identifier("c".into()),
-            Token::new(TokenType::PlusSign, "+".into()),
-            Token::identifier("d".into()),
+            Token::new(TokenType::Return),
+            Token::identifier(c_sym),
+            Token::new(TokenType::PlusSign),
+            Token::identifier(d_sym),
             Token::semicolon(),
             Token::right_brace(),
             Token::semicolon(),
             Token::right_brace(),
             Token::semicolon(),
             Token::new_let(),
-            Token::identifier("closure2".into()),
+            Token::identifier(closure2_sym),
             Token::assign_sign(),
             Token::function(),
             Token::left_paren(),
             Token::right_paren(),
             Token::left_brace(),
             Token::function(),
-            Token::identifier("test".into()),
+            Token::identifier(test_sym),
             Token::left_paren(),
             Token::right_paren(),
             Token::left_brace(),
             Token::right_brace(),
-            Token::new(TokenType::Return, "return".into()),
-            Token::identifier("test".into()),
+            Token::new(TokenType::Return),
+            Token::identifier(test_sym),
             Token::semicolon(),
             Token::right_brace(),
             Token::semicolon(),
             Token::eof(),
         ];
-        let result = run_tokenizer(lex);
+        let result = run_tokenizer(lex, &mut interner);
 
         assert_eq!(expected, result)
     }
@@ -579,6 +631,10 @@ mod test {
         ";
 
         let lex = Lexer::new(input);
+        let mut interner = Interner::new();
+
+        let a_sym = interner.intern("a");
+
         let expected: Vec<Token> = vec![
             Token::while_token(),
             Token::left_paren(),
@@ -586,14 +642,14 @@ mod test {
             Token::right_paren(),
             Token::left_brace(),
             Token::new_let(),
-            Token::identifier("a".into()),
+            Token::identifier(a_sym),
             Token::assign_sign(),
             Token::int(0),
             Token::semicolon(),
             Token::right_brace(),
             Token::eof(),
         ];
-        let result = run_tokenizer(lex);
+        let result = run_tokenizer(lex, &mut interner);
 
         assert_eq!(expected, result)
     }
@@ -604,14 +660,19 @@ mod test {
         ";
 
         let lex = Lexer::new(input);
+        let mut interner = Interner::new();
+
+        let test_sym = interner.intern("test");
+        let interval_sym = interner.intern("interval");
+
         let expected: Vec<Token> = vec![
-            Token::identifier("test".into()),
+            Token::identifier(test_sym),
             Token::dot(),
-            Token::identifier("interval".into()),
+            Token::identifier(interval_sym),
             Token::semicolon(),
             Token::eof(),
         ];
-        let result = run_tokenizer(lex);
+        let result = run_tokenizer(lex, &mut interner);
 
         assert_eq!(expected, result)
     }

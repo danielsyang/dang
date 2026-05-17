@@ -6,10 +6,13 @@ use std::{
     rc::Rc,
 };
 
-use crate::eval::{
-    env::Environment,
-    eval_block, eval_function_block,
-    object::{CustomHash, HashKey, Object},
+use crate::{
+    eval::{
+        env::Environment,
+        eval_block, eval_function_block,
+        object::{CustomHash, HashKey, Object},
+    },
+    intern::interner::{Interner, PrettyDisplay, WithInterner},
 };
 
 type Elements = Vec<Expression>;
@@ -105,27 +108,39 @@ pub enum Expression {
 }
 
 impl Expression {
-    pub fn eval(&self, env: &Rc<RefCell<Environment>>) -> Object {
+    pub fn eval(&self, env: &Rc<RefCell<Environment>>, interner: &Interner) -> Object {
         match self {
             Expression::Error(s) => Object::Error(s.clone()),
             Expression::Literal(l) => l.eval(),
             Expression::Prefix(op, exp) => {
-                let right_exp = exp.eval(env);
+                let right_exp = exp.eval(env, interner);
 
                 match op {
                     Prefix::Bang => match right_exp {
                         Object::Boolean(b) => Object::Boolean(!b),
-                        _ => Object::Error(format!("expected Boolean, got: {}", right_exp)),
+                        _ => Object::Error(format!(
+                            "expected Boolean, got: {}",
+                            WithInterner {
+                                value: &right_exp,
+                                interner
+                            }
+                        )),
                     },
                     Prefix::Minus => match right_exp {
                         Object::Number(n) => Object::Number(-n),
-                        _ => Object::Error(format!("expected Number, got: {}", right_exp)),
+                        _ => Object::Error(format!(
+                            "expected Number, got: {}",
+                            WithInterner {
+                                value: &right_exp,
+                                interner
+                            }
+                        )),
                     },
                 }
             }
             Expression::Infix(op, left_exp, right_exp) => {
-                let mut left = left_exp.eval(env);
-                let mut right = right_exp.eval(env);
+                let mut left = left_exp.eval(env, interner);
+                let mut right = right_exp.eval(env, interner);
 
                 loop {
                     match (&left, &right) {
@@ -144,14 +159,29 @@ impl Expression {
                         (Object::Number(l), Object::Number(r)) => Object::Number(l + r),
                         _ => Object::Error(format!(
                             "Can only perform operation + on numbers, got: {} and {} ",
-                            &left, &right,
+                            WithInterner {
+                                value: &left,
+                                interner
+                            },
+                            WithInterner {
+                                value: &right,
+                                interner
+                            },
                         )),
                     },
                     (Operator::Minus, _, _) => match (&left, &right) {
                         (Object::Number(l), Object::Number(r)) => Object::Number(l - r),
                         _ => Object::Error(format!(
                             "Can only perform operation {} on numbers, got: {} and {} ",
-                            op, &left, &right,
+                            op,
+                            WithInterner {
+                                value: &left,
+                                interner
+                            },
+                            WithInterner {
+                                value: &right,
+                                interner
+                            },
                         )),
                     },
 
@@ -159,7 +189,15 @@ impl Expression {
                         (Object::Number(l), Object::Number(r)) => Object::Number(l * r),
                         _ => Object::Error(format!(
                             "Can only perform operation {} on numbers, got: {} and {} ",
-                            op, left, right,
+                            op,
+                            WithInterner {
+                                value: &left,
+                                interner
+                            },
+                            WithInterner {
+                                value: &right,
+                                interner
+                            },
                         )),
                     },
 
@@ -167,7 +205,15 @@ impl Expression {
                         (Object::Number(l), Object::Number(r)) => Object::Number(l / r),
                         _ => Object::Error(format!(
                             "Can only perform operation {} on numbers, got: {} and {} ",
-                            op, left, right,
+                            op,
+                            WithInterner {
+                                value: &left,
+                                interner
+                            },
+                            WithInterner {
+                                value: &right,
+                                interner
+                            },
                         )),
                     },
 
@@ -175,7 +221,15 @@ impl Expression {
                         (Object::Number(l), Object::Number(r)) => Object::Boolean(l > r),
                         _ => Object::Error(format!(
                             "Can only perform operation {} on numbers, got: {} and {} ",
-                            op, left, right,
+                            op,
+                            WithInterner {
+                                value: &left,
+                                interner
+                            },
+                            WithInterner {
+                                value: &right,
+                                interner
+                            },
                         )),
                     },
 
@@ -183,7 +237,15 @@ impl Expression {
                         (Object::Number(l), Object::Number(r)) => Object::Boolean(l < r),
                         _ => Object::Error(format!(
                             "Can only perform operation {} on numbers, got: {} and {} ",
-                            op, left, right,
+                            op,
+                            WithInterner {
+                                value: &left,
+                                interner
+                            },
+                            WithInterner {
+                                value: &right,
+                                interner
+                            },
                         )),
                     },
 
@@ -191,7 +253,15 @@ impl Expression {
                         (Object::Number(l), Object::Number(r)) => Object::Boolean(l >= r),
                         _ => Object::Error(format!(
                             "Can only perform operation {} on numbers, got: {} and {} ",
-                            op, left, right,
+                            op,
+                            WithInterner {
+                                value: &left,
+                                interner
+                            },
+                            WithInterner {
+                                value: &right,
+                                interner
+                            },
                         )),
                     },
 
@@ -199,7 +269,15 @@ impl Expression {
                         (Object::Number(l), Object::Number(r)) => Object::Boolean(l <= r),
                         _ => Object::Error(format!(
                             "Can only perform operation {} on numbers, got: {} and {} ",
-                            op, left, right,
+                            op,
+                            WithInterner {
+                                value: &left,
+                                interner
+                            },
+                            WithInterner {
+                                value: &right,
+                                interner
+                            },
                         )),
                     },
 
@@ -208,7 +286,15 @@ impl Expression {
                         (Object::Boolean(l), Object::Boolean(r)) => Object::Boolean(l == r),
                         _ => Object::Error(format!(
                             "Can only perform operation {} on (numbers | boolean), got: {} and {} ",
-                            op, left, right,
+                            op,
+                            WithInterner {
+                                value: &left,
+                                interner
+                            },
+                            WithInterner {
+                                value: &right,
+                                interner
+                            },
                         )),
                     },
                     (Operator::NotEqual, _, _) => match (&left, &right) {
@@ -216,21 +302,45 @@ impl Expression {
                         (Object::Boolean(l), Object::Boolean(r)) => Object::Boolean(l != r),
                         _ => Object::Error(format!(
                             "Can only perform operation {} on (numbers | boolean), got: {} and {} ",
-                            op, left, right,
+                            op,
+                            WithInterner {
+                                value: &left,
+                                interner
+                            },
+                            WithInterner {
+                                value: &right,
+                                interner
+                            },
                         )),
                     },
                     (Operator::And, _, _) => match (&left, &right) {
                         (Object::Boolean(l), Object::Boolean(r)) => Object::Boolean(*l && *r),
                         _ => Object::Error(format!(
                             "Can only perform operation {} on (numbers | boolean), got: {} and {} ",
-                            op, left, right,
+                            op,
+                            WithInterner {
+                                value: &left,
+                                interner
+                            },
+                            WithInterner {
+                                value: &right,
+                                interner
+                            },
                         )),
                     },
                     (Operator::Or, _, _) => match (&left, &right) {
                         (Object::Boolean(l), Object::Boolean(r)) => Object::Boolean(*l || *r),
                         _ => Object::Error(format!(
                             "Can only perform operation {} on (numbers | boolean), got: {} and {} ",
-                            op, left, right,
+                            op,
+                            WithInterner {
+                                value: &left,
+                                interner
+                            },
+                            WithInterner {
+                                value: &right,
+                                interner
+                            },
                         )),
                     },
                 }
@@ -240,17 +350,20 @@ impl Expression {
                 consequence,
                 alternative,
             } => {
-                let condition_result = condition.eval(env);
+                let condition_result = condition.eval(env, interner);
                 match (condition_result, alternative) {
-                    (Object::Boolean(true), _) => eval_block(consequence, env),
-                    (Object::Boolean(false), Some(alt)) => eval_block(alt, env),
+                    (Object::Boolean(true), _) => eval_block(consequence, env, interner),
+                    (Object::Boolean(false), Some(alt)) => eval_block(alt, env, interner),
                     (Object::Boolean(false), None) => Object::None,
                     (_, _) => Object::Error(String::from("condition did not evaluate to boolean")),
                 }
             }
-            Expression::Identifier(ident) => match &env.borrow_mut().get(ident.clone()) {
+            Expression::Identifier(ident) => match &env.borrow_mut().get(ident) {
                 Some(obj) => obj.clone(),
-                None => Object::Error(format!("identifier not found: {}", ident)),
+                None => Object::Error(format!(
+                    "identifier not found: {}",
+                    interner.resolve(*ident)
+                )),
             },
             Expression::Function {
                 identifier,
@@ -259,7 +372,7 @@ impl Expression {
             } => {
                 let fun = match identifier {
                     Some(i) => Object::Function {
-                        name: Some(i.clone()),
+                        name: Some(*i),
                         parameters: parameters.to_vec().clone(),
                         body: body.to_vec().clone(),
                         env: env.clone(),
@@ -273,7 +386,7 @@ impl Expression {
                 };
 
                 if let Some(i) = identifier {
-                    env.borrow_mut().set(i.clone(), fun.clone())
+                    env.borrow_mut().set(i, fun.clone())
                 }
 
                 fun
@@ -282,10 +395,10 @@ impl Expression {
                 function,
                 arguments,
             } => {
-                let func = function.eval(env);
+                let func = function.eval(env, interner);
                 let args = arguments
                     .iter()
-                    .map(|arg| arg.eval(env))
+                    .map(|arg| arg.eval(env, interner))
                     .collect::<Vec<_>>();
 
                 match (func, &args) {
@@ -303,7 +416,7 @@ impl Expression {
                         let mut error_idx = 0;
                         for (idx, param) in parameters.iter().enumerate() {
                             if let Some(arg) = args.get(idx) {
-                                next_env.borrow_mut().set(param.clone(), arg.clone());
+                                next_env.borrow_mut().set(param, arg.clone());
                             } else {
                                 error_idx = idx;
                                 has_error = true;
@@ -315,26 +428,32 @@ impl Expression {
                             return Object::Error(format!("Missing parameter: {}", error_idx));
                         }
 
-                        match eval_function_block(&body, &next_env) {
+                        match eval_function_block(&body, &next_env, interner) {
                             Some(r) => r,
                             None => Object::None,
                         }
                     }
-                    (Object::Builtin { func }, _) => func(args),
-                    (_, _) => Object::Error(format!("not a valid call {} ", self)),
+                    (Object::Builtin { func }, _) => func(args, interner),
+                    (_, _) => Object::Error(format!(
+                        "not a valid call {} ",
+                        WithInterner {
+                            value: self,
+                            interner
+                        }
+                    )),
                 }
             }
             Expression::Array(elements) => {
                 let arr = elements
                     .iter()
-                    .map(|el| el.eval(env))
+                    .map(|el| el.eval(env, interner))
                     .collect::<Vec<Object>>();
 
                 Object::Array(arr)
             }
             Expression::Index { index, left } => {
-                let left_exp = left.eval(env);
-                let index_exp = index.eval(env);
+                let left_exp = left.eval(env, interner);
+                let index_exp = index.eval(env, interner);
 
                 match (&left_exp, &index_exp) {
                     (Object::Array(arr), Object::Array(index)) => {
@@ -375,14 +494,20 @@ impl Expression {
                 let mut hm: HashMap<HashKey, Object> = HashMap::new();
 
                 for (k, v) in pairs {
-                    let key_obj = k.eval(env);
+                    let key_obj = k.eval(env, interner);
 
                     if key_obj.hash().is_none() {
-                        return Object::Error(format!("Key is not hashable, got {}", key_obj));
+                        return Object::Error(format!(
+                            "Key is not hashable, got {}",
+                            WithInterner {
+                                value: &key_obj,
+                                interner
+                            }
+                        ));
                     }
 
                     let key = key_obj.hash().unwrap();
-                    let val = v.eval(env);
+                    let val = v.eval(env, interner);
 
                     hm.insert(key, val);
                 }
@@ -394,18 +519,22 @@ impl Expression {
                 attribute,
             } => {
                 // For now "dot" operations only works on hashMaps
-                let hashmap = identifier.eval(env);
+                let hashmap = identifier.eval(env, interner);
 
                 match hashmap {
                     Object::HashMap { pairs } => {
-                        match pairs.get(&HashKey::new(attribute.clone())) {
+                        match pairs.get(&HashKey::new(interner.resolve(*attribute).to_string())) {
                             Some(v) => v.clone(),
                             None => Object::None,
                         }
                     }
                     _ => Object::Error(format!(
                         "Cannot read {:?} propertie of {}",
-                        attribute, identifier
+                        attribute,
+                        WithInterner {
+                            value: identifier.as_ref(),
+                            interner
+                        }
                     )),
                 }
             }
@@ -413,18 +542,38 @@ impl Expression {
     }
 }
 
-impl Display for Expression {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl PrettyDisplay for Expression {
+    fn pretty(&self, f: &mut std::fmt::Formatter, interner: &Interner) -> std::fmt::Result {
         match self {
             Expression::Error(s) => write!(f, "error: ( {} ) ", s),
             Expression::Literal(Literal::Number(v)) => write!(f, "Number ({})", v),
             Expression::Literal(Literal::String(s)) => write!(f, "String ({})", s),
             Expression::Literal(Literal::Boolean(b)) => write!(f, "Bool ({})", b),
-            Expression::Identifier(i) => write!(f, "Ident ({})", i),
+            Expression::Identifier(i) => write!(f, "Ident ({})", interner.resolve(*i)),
             Expression::Infix(op, left, right) => {
-                write!(f, "{} Left {} , Right {}", op, left, right)
+                write!(
+                    f,
+                    "{} Left {} , Right {}",
+                    op,
+                    WithInterner {
+                        value: left.as_ref(),
+                        interner
+                    },
+                    WithInterner {
+                        value: right.as_ref(),
+                        interner
+                    },
+                )
             }
-            Expression::Prefix(pr, exp) => write!(f, "{} {}", pr, exp),
+            Expression::Prefix(pr, exp) => write!(
+                f,
+                "{} {}",
+                pr,
+                WithInterner {
+                    value: exp.as_ref(),
+                    interner
+                },
+            ),
             Expression::If {
                 condition,
                 consequence,
@@ -432,7 +581,7 @@ impl Display for Expression {
             } => {
                 let consequence_block = consequence
                     .iter()
-                    .map(|c| c.to_string())
+                    .map(|c| WithInterner { value: c, interner }.to_string())
                     .collect::<Vec<_>>()
                     .join(", ");
 
@@ -440,17 +589,31 @@ impl Display for Expression {
                     Some(alt) => {
                         let alt_block = alt
                             .iter()
-                            .map(|c| c.to_string())
+                            .map(|c| WithInterner { value: c, interner }.to_string())
                             .collect::<Vec<_>>()
                             .join(", ");
+
                         write!(
                             f,
                             "If {} {{ {} }} else {}",
-                            condition, consequence_block, alt_block
+                            WithInterner {
+                                value: condition.as_ref(),
+                                interner
+                            },
+                            consequence_block,
+                            alt_block
                         )
                     }
                     None => {
-                        write!(f, "If {} {{ {} }}", condition, consequence_block)
+                        write!(
+                            f,
+                            "If {} {{ {} }}",
+                            WithInterner {
+                                value: condition.as_ref(),
+                                interner
+                            },
+                            consequence_block
+                        )
                     }
                 }
             }
@@ -462,19 +625,27 @@ impl Display for Expression {
                 Some(i) => write!(
                     f,
                     "Fn {} ( {} ) {}",
-                    i.clone(),
-                    parameters.join(", "),
+                    interner.resolve(*i),
+                    parameters
+                        .iter()
+                        .map(|p| interner.resolve(*p))
+                        .collect::<Vec<_>>()
+                        .join(", "),
                     body.iter()
-                        .map(|b| b.to_string())
+                        .map(|b| WithInterner { value: b, interner }.to_string())
                         .collect::<Vec<_>>()
                         .join(", ")
                 ),
                 None => write!(
                     f,
                     "Fn ( {} ) {}",
-                    parameters.join(", "),
+                    parameters
+                        .iter()
+                        .map(|p| interner.resolve(*p))
+                        .collect::<Vec<_>>()
+                        .join(", "),
                     body.iter()
-                        .map(|b| b.to_string())
+                        .map(|b| WithInterner { value: b, interner }.to_string())
                         .collect::<Vec<_>>()
                         .join(", ")
                 ),
@@ -486,10 +657,17 @@ impl Display for Expression {
             } => write!(
                 f,
                 "Call {} , {}",
-                function,
+                WithInterner {
+                    value: function.as_ref(),
+                    interner
+                },
                 arguments
                     .iter()
-                    .map(|arg| arg.to_string())
+                    .map(|arg| WithInterner {
+                        value: arg,
+                        interner
+                    }
+                    .to_string())
                     .collect::<Vec<_>>()
                     .join(", ")
             ),
@@ -499,19 +677,40 @@ impl Display for Expression {
                 "[ {} ]",
                 elements
                     .iter()
-                    .map(|el| el.to_string())
+                    .map(|el| WithInterner {
+                        value: el,
+                        interner
+                    }
+                    .to_string())
                     .collect::<Vec<_>>()
                     .join(", ")
             ),
 
             Expression::Index { index, left } => {
-                write!(f, "({} [{}])", left, index)
+                write!(
+                    f,
+                    "({} [{}])",
+                    WithInterner {
+                        value: left.as_ref(),
+                        interner
+                    },
+                    WithInterner {
+                        value: index.as_ref(),
+                        interner
+                    },
+                )
             }
 
             Expression::HashMap { pairs } => {
                 let expr = pairs
                     .iter()
-                    .map(|(k, v)| format!("{} : {}", k, v))
+                    .map(|(k, v)| {
+                        format!(
+                            "{} : {}",
+                            WithInterner { value: k, interner },
+                            WithInterner { value: v, interner },
+                        )
+                    })
                     .collect::<Vec<_>>()
                     .join(", ");
 
@@ -521,7 +720,15 @@ impl Display for Expression {
                 identifier,
                 attribute,
             } => {
-                write!(f, "{} of {}", attribute, identifier)
+                write!(
+                    f,
+                    "{} of {}",
+                    interner.resolve(*attribute),
+                    WithInterner {
+                        value: identifier.as_ref(),
+                        interner
+                    },
+                )
             }
         }
     }

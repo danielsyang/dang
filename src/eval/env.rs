@@ -1,23 +1,20 @@
-use crate::eval::object::Object;
+use crate::{
+    eval::object::Object,
+    intern::interner::{Interner, Symbol},
+};
 use std::{cell::RefCell, collections::HashMap, fmt::Debug, rc::Rc};
 
 use super::builtin_functions;
 
 #[derive(Debug)]
 pub struct Environment {
-    pub store: HashMap<String, Object>,
+    pub store: HashMap<Symbol, Object>,
     pub parent: Option<Rc<RefCell<Environment>>>,
 }
 
-impl Default for Environment {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl Environment {
-    pub fn new() -> Self {
-        builtin_functions()
+    pub fn new(interner: &mut Interner) -> Self {
+        builtin_functions(interner)
     }
 
     pub fn new_enclosed(parent_env: Rc<RefCell<Environment>>) -> Rc<RefCell<Self>> {
@@ -27,8 +24,8 @@ impl Environment {
         }))
     }
 
-    pub fn get(&self, name: String) -> Option<Object> {
-        let value_exists = self.store.get(name.as_str()).cloned();
+    pub fn get(&self, name: &Symbol) -> Option<Object> {
+        let value_exists = self.store.get(name).cloned();
 
         match value_exists {
             Some(value) => Some(value),
@@ -39,19 +36,7 @@ impl Environment {
         }
     }
 
-    pub fn set(&mut self, name: String, val: Object) {
-        self.store.insert(name, val);
-    }
-}
-
-impl Clone for Environment {
-    fn clone(&self) -> Self {
-        let mut next_store = Self::new();
-
-        for (k, v) in self.store.iter() {
-            next_store.set(k.to_string(), v.clone());
-        }
-
-        next_store
+    pub fn set(&mut self, name: &Symbol, val: Object) {
+        self.store.insert(*name, val);
     }
 }

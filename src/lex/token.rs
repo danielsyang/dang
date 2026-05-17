@@ -1,5 +1,7 @@
 use std::fmt::Debug;
 
+use crate::intern::interner::Symbol;
+
 #[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub enum TokenType {
     Comma,
@@ -7,7 +9,7 @@ pub enum TokenType {
     Semicolon,
     Colon,
     Eof,
-    Identifier,
+    Identifier(Symbol),
     LeftParen,
     RightParen,
     LeftBrace,
@@ -51,210 +53,286 @@ pub enum TokenType {
     While,
 }
 
+impl TokenType {
+    pub fn to_token_kind(&self) -> TokenKind {
+        match self {
+            TokenType::Comma => TokenKind::Comma,
+            TokenType::Dot => TokenKind::Dot,
+            TokenType::Semicolon => TokenKind::Semicolon,
+            TokenType::Colon => TokenKind::Colon,
+            TokenType::Eof => TokenKind::Eof,
+            TokenType::Identifier(_) => TokenKind::Identifier,
+            TokenType::LeftParen => TokenKind::LeftParen,
+            TokenType::RightParen => TokenKind::RightParen,
+            TokenType::LeftBrace => TokenKind::LeftBrace,
+            TokenType::RightBrace => TokenKind::RightBrace,
+            TokenType::LeftBracket => TokenKind::LeftBracket,
+            TokenType::RightBracket => TokenKind::RightBracket,
+            TokenType::Illegal => TokenKind::Illegal,
+
+            // keywords
+            TokenType::Let => TokenKind::Let,
+            TokenType::Function => TokenKind::Function,
+            TokenType::If => TokenKind::If,
+            TokenType::Else => TokenKind::Else,
+            TokenType::Return => TokenKind::Return,
+
+            // literals
+            TokenType::Boolean(_) => TokenKind::Boolean,
+            TokenType::String(_) => TokenKind::String,
+            TokenType::Int(_) => TokenKind::Int,
+
+            // whitespace is a generic term that represents ' ', or '\n', or '\r'
+            TokenType::Whitespace => TokenKind::Whitespace,
+
+            // math
+            TokenType::PlusSign => TokenKind::PlusSign,
+            TokenType::MinusSign => TokenKind::MinusSign,
+            TokenType::MultiplicationSign => TokenKind::MultiplicationSign,
+            TokenType::SlashSign => TokenKind::SlashSign,
+            TokenType::Asssign => TokenKind::Asssign,
+            // -> !
+            TokenType::BangSign => TokenKind::BangSign,
+            TokenType::LT => TokenKind::LT,
+            TokenType::GT => TokenKind::GT,
+            TokenType::Lte => TokenKind::Lte,
+            TokenType::Gte => TokenKind::Gte,
+            TokenType::Eq => TokenKind::Eq,
+            TokenType::NotEq => TokenKind::NotEq,
+            TokenType::And => TokenKind::And,
+            TokenType::Or => TokenKind::Or,
+            TokenType::While => TokenKind::While,
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub struct Token {
     pub kind: TokenType,
-    pub literal: String,
 }
 
 impl Token {
-    pub fn new(tt: TokenType, literal: String) -> Self {
-        Self { kind: tt, literal }
+    pub fn new(tt: TokenType) -> Self {
+        Self { kind: tt }
     }
 
     pub fn new_let() -> Self {
         Self {
             kind: TokenType::Let,
-            literal: "let".to_string(),
         }
     }
 
     pub fn eof() -> Self {
         Self {
             kind: TokenType::Eof,
-            literal: "\0".to_string(),
         }
     }
 
     pub fn whitespace() -> Self {
         Self {
             kind: TokenType::Whitespace,
-            literal: " ".to_string(),
         }
     }
 
     pub fn assign_sign() -> Self {
         Self {
             kind: TokenType::Asssign,
-            literal: "=".to_string(),
         }
     }
 
     pub fn semicolon() -> Self {
         Self {
             kind: TokenType::Semicolon,
-            literal: ";".to_string(),
         }
     }
 
     pub fn left_paren() -> Self {
         Self {
             kind: TokenType::LeftParen,
-            literal: "(".to_string(),
         }
     }
 
     pub fn right_paren() -> Self {
         Self {
             kind: TokenType::RightParen,
-            literal: ")".to_string(),
         }
     }
 
     pub fn left_brace() -> Self {
         Self {
             kind: TokenType::LeftBrace,
-            literal: "{".to_string(),
         }
     }
 
     pub fn right_brace() -> Self {
         Self {
             kind: TokenType::RightBrace,
-            literal: "}".to_string(),
         }
     }
 
     pub fn left_bracket() -> Self {
         Self {
             kind: TokenType::LeftBracket,
-            literal: "[".to_string(),
         }
     }
 
     pub fn right_bracket() -> Self {
         Self {
             kind: TokenType::RightBracket,
-            literal: "]".to_string(),
         }
     }
 
     pub fn function() -> Self {
         Self {
             kind: TokenType::Function,
-            literal: "fn".to_string(),
         }
     }
 
     pub fn comma() -> Self {
         Self {
             kind: TokenType::Comma,
-            literal: ",".to_string(),
         }
     }
 
     pub fn bang() -> Self {
         Self {
             kind: TokenType::BangSign,
-            literal: "!".to_string(),
         }
     }
 
     pub fn lt() -> Self {
         Self {
             kind: TokenType::LT,
-            literal: "<".to_string(),
         }
     }
 
     pub fn gt() -> Self {
         Self {
             kind: TokenType::GT,
-            literal: ">".to_string(),
         }
     }
 
     pub fn lte() -> Self {
         Self {
             kind: TokenType::Lte,
-            literal: "<=".to_string(),
         }
     }
 
     pub fn gte() -> Self {
         Self {
             kind: TokenType::Gte,
-            literal: ">=".to_string(),
         }
     }
 
     pub fn int(n: i64) -> Self {
         Self {
             kind: TokenType::Int(n),
-            literal: n.to_string(),
         }
     }
 
-    pub fn identifier(name: String) -> Self {
+    pub fn identifier(symbol: Symbol) -> Self {
         Self {
-            kind: TokenType::Identifier,
-            literal: name,
+            kind: TokenType::Identifier(symbol),
         }
     }
 
     pub fn string(string: String) -> Self {
         Self {
             kind: TokenType::String(string.clone()),
-            literal: string,
         }
     }
 
     pub fn boolean(b: bool) -> Self {
         Self {
             kind: TokenType::Boolean(b),
-            literal: b.to_string(),
         }
     }
 
     pub fn colon() -> Self {
         Self {
             kind: TokenType::Colon,
-            literal: ":".to_string(),
         }
     }
 
     pub fn illegal() -> Self {
         Self {
             kind: TokenType::Illegal,
-            literal: "illegal".to_string(),
         }
     }
 
     pub fn and() -> Self {
         Self {
             kind: TokenType::And,
-            literal: "&&".to_string(),
         }
     }
 
     pub fn or() -> Self {
         Self {
             kind: TokenType::Or,
-            literal: "||".to_string(),
         }
     }
 
     pub fn while_token() -> Self {
         Self {
             kind: TokenType::While,
-            literal: "while".into(),
         }
     }
 
     pub fn dot() -> Self {
         Self {
             kind: TokenType::Dot,
-            literal: ".".into(),
         }
     }
+}
+
+// Enum that mirrors TokenType but without the values.
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
+pub enum TokenKind {
+    Comma,
+    Dot,
+    Semicolon,
+    Colon,
+    Eof,
+    Identifier,
+    LeftParen,
+    RightParen,
+    LeftBrace,
+    RightBrace,
+    LeftBracket,
+    RightBracket,
+    Illegal,
+
+    // keywords
+    Let,
+    Function,
+    If,
+    Else,
+    Return,
+
+    // literals
+    Boolean,
+    String,
+    Int,
+
+    // whitespace is a generic term that represents ' ', or '\n', or '\r'
+    Whitespace,
+
+    // math
+    PlusSign,
+    MinusSign,
+    MultiplicationSign,
+    SlashSign,
+    Asssign,
+    // -> !
+    BangSign,
+    LT,
+    GT,
+    Lte,
+    Gte,
+    Eq,
+    NotEq,
+    And,
+    Or,
+
+    While,
 }

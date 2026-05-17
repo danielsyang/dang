@@ -3,9 +3,10 @@ use std::{cell::RefCell, collections::HashMap, fmt::Display, rc::Rc};
 use crate::{
     ast::statement::{Block, Identifier},
     eval::env::Environment,
+    intern::interner::{Interner, PrettyDisplay, WithInterner},
 };
 
-type BuiltinFunction = fn(Vec<Object>) -> Object;
+type BuiltinFunction = fn(Vec<Object>, &Interner) -> Object;
 type Elements = Vec<Object>;
 
 #[derive(Debug, Clone)]
@@ -67,14 +68,21 @@ impl CustomHash for Object {
     }
 }
 
-impl Display for Object {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl PrettyDisplay for Object {
+    fn pretty(&self, f: &mut std::fmt::Formatter, interner: &Interner) -> std::fmt::Result {
         match self {
             Object::None => write!(f, "None"),
             Object::Number(n) => write!(f, "{}", n),
             Object::String(s) => write!(f, "\"{}\"", s),
             Object::Boolean(b) => write!(f, "{}", b),
-            Object::Return(r) => write!(f, "{}", r),
+            Object::Return(r) => write!(
+                f,
+                "{}",
+                WithInterner {
+                    value: r.as_ref(),
+                    interner
+                }
+            ),
             Object::Error(s) => write!(f, "error: {}", s),
             Object::Function {
                 name,
@@ -85,14 +93,18 @@ impl Display for Object {
                 Some(n) => write!(
                     f,
                     "Fn {} ( {} ) {{ {} }}",
-                    n,
+                    interner.resolve(*n),
                     parameters
                         .iter()
-                        .map(|p| p.to_string())
+                        .map(|p| interner.resolve(*p))
                         .collect::<Vec<_>>()
                         .join(", "),
                     body.iter()
-                        .map(|sttm| sttm.to_string())
+                        .map(|sttm| WithInterner {
+                            value: sttm,
+                            interner
+                        }
+                        .to_string())
                         .collect::<Vec<_>>()
                         .join("\n")
                 ),
@@ -101,11 +113,15 @@ impl Display for Object {
                     "Fn ( {} ) {{ {} }}",
                     parameters
                         .iter()
-                        .map(|p| p.to_string())
+                        .map(|p| interner.resolve(*p))
                         .collect::<Vec<_>>()
                         .join(", "),
                     body.iter()
-                        .map(|sttm| sttm.to_string())
+                        .map(|sttm| WithInterner {
+                            value: sttm,
+                            interner
+                        }
+                        .to_string())
                         .collect::<Vec<_>>()
                         .join("\n")
                 ),
@@ -116,7 +132,11 @@ impl Display for Object {
                 "[ {} ]",
                 elements
                     .iter()
-                    .map(|elem| elem.to_string())
+                    .map(|elem| WithInterner {
+                        value: elem,
+                        interner
+                    }
+                    .to_string())
                     .collect::<Vec<_>>()
                     .join(", ")
             ),
@@ -125,7 +145,7 @@ impl Display for Object {
                 "{{ {} }}",
                 pairs
                     .iter()
-                    .map(|(k, v)| { format!("{} : {}", k, v) })
+                    .map(|(k, v)| { format!("{} : {}", k, WithInterner { value: v, interner }) })
                     .collect::<Vec<_>>()
                     .join(", ")
             ),
