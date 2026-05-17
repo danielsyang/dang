@@ -1,6 +1,9 @@
-use std::{collections::HashMap, fmt::Display};
+use std::{cell::RefCell, collections::HashMap, fmt::Display, rc::Rc};
 
-use crate::ast::statement::{Block, Identifier};
+use crate::{
+    ast::statement::{Block, Identifier},
+    eval::env::Environment,
+};
 
 type BuiltinFunction = fn(Vec<Object>) -> Object;
 type Elements = Vec<Object>;
@@ -17,6 +20,7 @@ pub enum Object {
         name: Option<Identifier>,
         parameters: Vec<Identifier>,
         body: Block,
+        env: Rc<RefCell<Environment>>,
     },
     Array(Elements),
     Builtin {
@@ -76,6 +80,7 @@ impl Display for Object {
                 name,
                 parameters,
                 body,
+                env: _,
             } => match name {
                 Some(n) => write!(
                     f,

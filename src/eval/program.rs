@@ -1,3 +1,5 @@
+use std::{cell::RefCell, rc::Rc};
+
 use crate::ast::statement::Statement;
 
 use super::{env::Environment, object::Object};
@@ -7,7 +9,7 @@ pub struct Program {
 }
 
 impl Program {
-    pub fn eval_statements(&self, env: &mut Environment) -> Object {
+    pub fn eval_statements(&self, env: &Rc<RefCell<Environment>>) -> Object {
         let mut result = Object::None;
         for stmt in self.statements.iter() {
             result = stmt.eval(env);

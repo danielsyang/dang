@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use crate::ast::statement::Block;
 
@@ -69,7 +69,7 @@ fn builtin_print(args: Vec<Object>) -> Object {
     Object::None
 }
 
-pub fn eval_block(block: &Block, env: &mut Environment) -> Object {
+pub fn eval_block(block: &Block, env: &Rc<RefCell<Environment>>) -> Object {
     let mut result = Object::None;
 
     for sttm in block {
@@ -83,7 +83,7 @@ pub fn eval_block(block: &Block, env: &mut Environment) -> Object {
     result
 }
 
-pub fn eval_function_block(block: &Block, env: &mut Environment) -> Option<Object> {
+pub fn eval_function_block(block: &Block, env: &Rc<RefCell<Environment>>) -> Option<Object> {
     for sttm in block {
         let evaluation = sttm.eval(env);
         match evaluation {
@@ -121,17 +121,22 @@ pub fn builtin_functions() -> Environment {
     store.insert(String::from("last"), last_func);
     store.insert(String::from("print"), print_func);
 
-    Environment { store }
+    Environment {
+        store,
+        parent: None,
+    }
 }
 
 #[cfg(test)]
 mod test {
+    use std::{cell::RefCell, rc::Rc};
+
     use super::env::Environment;
     use crate::ast::parser::Parser;
 
     #[test]
     fn eval_integer_expression() {
-        let mut env = Environment::new();
+        let env = Rc::new(RefCell::new(Environment::new()));
         let inputs = [
             "5;",
             "10;",
@@ -147,14 +152,14 @@ mod test {
 
         for (i, input) in inputs.iter().enumerate() {
             let program = Parser::build_ast(input);
-            let result = program.eval_statements(&mut env);
+            let result = program.eval_statements(&env);
             assert_eq!(result.to_string(), expected.get(i).unwrap().to_string());
         }
     }
 
     #[test]
     fn eval_boolean_expression() {
-        let mut env = Environment::new();
+        let env = Rc::new(RefCell::new(Environment::new()));
         let inputs = [
             "true;",
             "false;",
@@ -180,26 +185,26 @@ mod test {
 
         for (i, input) in inputs.iter().enumerate() {
             let program = Parser::build_ast(input);
-            let result = program.eval_statements(&mut env);
+            let result = program.eval_statements(&env);
             assert_eq!(result.to_string(), expected.get(i).unwrap().to_string());
         }
     }
 
     #[test]
     fn eval_bang_expression() {
-        let mut env = Environment::new();
+        let env = Rc::new(RefCell::new(Environment::new()));
         let inputs = ["!true;", "!false;", "!!true;", "!!false;"];
         let expected = ["false", "true", "true", "false"];
         for (i, input) in inputs.iter().enumerate() {
             let program = Parser::build_ast(input);
-            let result = program.eval_statements(&mut env);
+            let result = program.eval_statements(&env);
             assert_eq!(result.to_string(), expected.get(i).unwrap().to_string());
         }
     }
 
     #[test]
     fn eval_if_else_expression() {
-        let mut env = Environment::new();
+        let env = Rc::new(RefCell::new(Environment::new()));
         let inputs = [
             "if (true) { return 10; };",
             "if (true) { return 10; } else { return 20; };",
@@ -209,14 +214,14 @@ mod test {
         let expected = ["10", "10", "20", "None"];
         for (i, input) in inputs.iter().enumerate() {
             let program = Parser::build_ast(input);
-            let result = program.eval_statements(&mut env);
+            let result = program.eval_statements(&env);
             assert_eq!(result.to_string(), expected.get(i).unwrap().to_string());
         }
     }
 
     #[test]
     fn eval_return_statement() {
-        let mut env = Environment::new();
+        let env = Rc::new(RefCell::new(Environment::new()));
         let inputs = [
             "return 10;",
             "return 2 * 5;",
@@ -234,14 +239,14 @@ mod test {
 
         for (i, input) in inputs.iter().enumerate() {
             let program = Parser::build_ast(input);
-            let result = program.eval_statements(&mut env);
+            let result = program.eval_statements(&env);
             assert_eq!(result.to_string(), expected.get(i).unwrap().to_string());
         }
     }
 
     #[test]
     fn eval_let_statements() {
-        let mut env = Environment::new();
+        let env = Rc::new(RefCell::new(Environment::new()));
         let inputs = [
             "let a = 5; a;",
             "let a = 5 * 5; a;",
@@ -253,40 +258,40 @@ mod test {
 
         for (i, input) in inputs.iter().enumerate() {
             let program = Parser::build_ast(input);
-            let result = program.eval_statements(&mut env);
+            let result = program.eval_statements(&env);
             assert_eq!(result.to_string(), expected.get(i).unwrap().to_string());
         }
     }
 
     #[test]
     fn eval_reassign_statements() {
-        let mut env = Environment::new();
+        let env = Rc::new(RefCell::new(Environment::new()));
         let inputs = ["let a = 5; a = 10; a;", "b = 10;"];
         let expected = ["10", "error: Identifier not found: b"];
 
         for (i, input) in inputs.iter().enumerate() {
             let program = Parser::build_ast(input);
-            let result = program.eval_statements(&mut env);
+            let result = program.eval_statements(&env);
             assert_eq!(result.to_string(), expected.get(i).unwrap().to_string());
         }
     }
 
     #[test]
     fn eval_function_block() {
-        let mut env = Environment::new();
+        let env = Rc::new(RefCell::new(Environment::new()));
         let inputs = ["fn abc(x) { x + 2; };"];
         let expected = ["Fn abc ( x ) { + Left Ident (x) , Right Number (2) }"];
 
         for (i, input) in inputs.iter().enumerate() {
             let program = Parser::build_ast(input);
-            let result = program.eval_statements(&mut env);
+            let result = program.eval_statements(&env);
             assert_eq!(result.to_string(), expected.get(i).unwrap().to_string());
         }
     }
 
     #[test]
     fn eval_function_application() {
-        let mut env = Environment::new();
+        let env = Rc::new(RefCell::new(Environment::new()));
         let inputs = [
             "fn abc(x) { return x * x; }; abc(5);",
             "fn add(x, y) { return x + y; }; add(5 + 5, add(5, 5));",
@@ -300,14 +305,14 @@ mod test {
 
         for (i, input) in inputs.iter().enumerate() {
             let program = Parser::build_ast(input);
-            let result = program.eval_statements(&mut env);
+            let result = program.eval_statements(&env);
             assert_eq!(result.to_string(), expected.get(i).unwrap().to_string());
         }
     }
 
     #[test]
     fn eval_function_closures() {
-        let mut env = Environment::new();
+        let env = Rc::new(RefCell::new(Environment::new()));
         let inputs = [
             "fn abc(x) {
                 return fn inner(y) {
@@ -332,14 +337,14 @@ mod test {
 
         for (i, input) in inputs.iter().enumerate() {
             let program = Parser::build_ast(input);
-            let result = program.eval_statements(&mut env);
+            let result = program.eval_statements(&env);
             assert_eq!(result.to_string(), expected.get(i).unwrap().to_string());
         }
     }
 
     #[test]
     fn eval_block_runs_each_statement_once() {
-        let mut env = Environment::new();
+        let env = Rc::new(RefCell::new(Environment::new()));
         let input = "
             let i = 0;
             let count = 0;
@@ -351,13 +356,13 @@ mod test {
             ";
 
         let program = Parser::build_ast(input);
-        let result = program.eval_statements(&mut env);
+        let result = program.eval_statements(&env);
         assert_eq!(result.to_string(), "5");
     }
 
     #[test]
     fn eval_builtin_len() {
-        let mut env = Environment::new();
+        let env = Rc::new(RefCell::new(Environment::new()));
         let inputs = [
             "len(\"\")",
             "len(\"four\")",
@@ -368,67 +373,67 @@ mod test {
 
         for (i, input) in inputs.iter().enumerate() {
             let program = Parser::build_ast(input);
-            let result = program.eval_statements(&mut env);
+            let result = program.eval_statements(&env);
             assert_eq!(result.to_string(), expected.get(i).unwrap().to_string());
         }
     }
 
     #[test]
     fn eval_arrays_expression() {
-        let mut env = Environment::new();
+        let env = Rc::new(RefCell::new(Environment::new()));
         let inputs = ["[1, 2, 3];", "[1, 2 + 2, 3 + 3];"];
         let expected = ["[ 1, 2, 3 ]", "[ 1, 4, 6 ]"];
 
         for (i, input) in inputs.iter().enumerate() {
             let program = Parser::build_ast(input);
-            let result = program.eval_statements(&mut env);
+            let result = program.eval_statements(&env);
             assert_eq!(result.to_string(), expected.get(i).unwrap().to_string());
         }
     }
 
     #[test]
     fn eval_indexes_arrays() {
-        let mut env = Environment::new();
+        let env = Rc::new(RefCell::new(Environment::new()));
         let inputs = ["[1, 2, 3][0];", "[1, 2 + 2, 3 + 3][2];"];
         let expected = ["1", "6"];
 
         for (i, input) in inputs.iter().enumerate() {
             let program = Parser::build_ast(input);
-            let result = program.eval_statements(&mut env);
+            let result = program.eval_statements(&env);
             assert_eq!(result.to_string(), expected.get(i).unwrap().to_string());
         }
     }
 
     #[test]
     fn eval_hashmaps() {
-        let mut env = Environment::new();
+        let env = Rc::new(RefCell::new(Environment::new()));
         let inputs = ["{\"one\": 10 - 9 }"];
         let expected = ["{ \"one\" : 1 }"];
 
         for (i, input) in inputs.iter().enumerate() {
             let program = Parser::build_ast(input);
-            let result = program.eval_statements(&mut env);
+            let result = program.eval_statements(&env);
             assert_eq!(result.to_string(), expected.get(i).unwrap().to_string());
         }
     }
 
     #[test]
     fn eval_hashmaps_value() {
-        let mut env = Environment::new();
+        let env = Rc::new(RefCell::new(Environment::new()));
         let inputs =
             ["let a = {\"one\": 10 - 9, \"two\": (1 * 1) + 1, 3: \"three\" }; a[\"one\"];"];
         let expected = ["1"];
 
         for (i, input) in inputs.iter().enumerate() {
             let program = Parser::build_ast(input);
-            let result = program.eval_statements(&mut env);
+            let result = program.eval_statements(&env);
             assert_eq!(result.to_string(), expected.get(i).unwrap().to_string());
         }
     }
 
     #[test]
     fn eval_while_loops() {
-        let mut env = Environment::new();
+        let env = Rc::new(RefCell::new(Environment::new()));
         let inputs = ["
         let i = 0;
         while (i < 10) {
@@ -440,14 +445,14 @@ mod test {
 
         for (i, input) in inputs.iter().enumerate() {
             let program = Parser::build_ast(input);
-            let result = program.eval_statements(&mut env);
+            let result = program.eval_statements(&env);
             assert_eq!(result.to_string(), expected.get(i).unwrap().to_string());
         }
     }
 
     #[test]
     fn eval_while_condition_expression() {
-        let mut env = Environment::new();
+        let env = Rc::new(RefCell::new(Environment::new()));
         let inputs = ["
         let i = 0;
         fn isBigger(i) {
@@ -465,14 +470,14 @@ mod test {
 
         for (i, input) in inputs.iter().enumerate() {
             let program = Parser::build_ast(input);
-            let result = program.eval_statements(&mut env);
+            let result = program.eval_statements(&env);
             assert_eq!(result.to_string(), expected.get(i).unwrap().to_string());
         }
     }
 
     #[test]
     fn eval_dot_expressions() {
-        let mut env = Environment::new();
+        let env = Rc::new(RefCell::new(Environment::new()));
         let inputs = ["
             let myHashMap = {
                 \"one\": 1,
@@ -485,14 +490,14 @@ mod test {
 
         for (i, input) in inputs.iter().enumerate() {
             let program = Parser::build_ast(input);
-            let result = program.eval_statements(&mut env);
+            let result = program.eval_statements(&env);
             assert_eq!(result.to_string(), expected.get(i).unwrap().to_string());
         }
     }
 
     #[test]
     fn eval_dot_expressions_none() {
-        let mut env = Environment::new();
+        let env = Rc::new(RefCell::new(Environment::new()));
         let inputs = ["
             let myHashMap = {
                 \"one\": 1,
@@ -505,7 +510,7 @@ mod test {
 
         for (i, input) in inputs.iter().enumerate() {
             let program = Parser::build_ast(input);
-            let result = program.eval_statements(&mut env);
+            let result = program.eval_statements(&env);
             assert_eq!(result.to_string(), expected.get(i).unwrap().to_string());
         }
     }
@@ -520,9 +525,27 @@ mod test {
         let expected = [5, 3, 10];
 
         for (i, input) in inputs.iter().enumerate() {
-            let mut env = Environment::new();
+            let env = Rc::new(RefCell::new(Environment::new()));
             let program = Parser::build_ast(input);
-            let result = program.eval_statements(&mut env);
+            let result = program.eval_statements(&env);
+            assert_eq!(result.to_string(), expected.get(i).unwrap().to_string());
+        }
+    }
+
+    #[test]
+    fn eval_closure() {
+        let env = Rc::new(RefCell::new(Environment::new()));
+        let inputs = ["
+            let x = 99;
+            fn shadow(x) { return x; };
+            shadow(5);
+            x;
+        "];
+        let expected = ["99"];
+
+        for (i, input) in inputs.iter().enumerate() {
+            let program = Parser::build_ast(input);
+            let result = program.eval_statements(&env);
             assert_eq!(result.to_string(), expected.get(i).unwrap().to_string());
         }
     }

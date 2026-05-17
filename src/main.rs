@@ -1,6 +1,8 @@
 use std::{
+    cell::RefCell,
     fs,
-    io::{stdin, stdout, Write},
+    io::{Write, stdin, stdout},
+    rc::Rc,
 };
 
 use clap::Parser as Parser_Clap;
@@ -26,7 +28,7 @@ struct Args {
 
 fn main() {
     let args = Args::parse();
-    let mut env = Environment::new();
+    let mut env = Rc::new(RefCell::new(Environment::new()));
 
     match args.file_name {
         Some(file_name) => {

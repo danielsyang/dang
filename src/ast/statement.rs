@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{cell::RefCell, fmt::Display, rc::Rc};
 
 use crate::eval::{env::Environment, eval_block, object::Object};
 
@@ -37,7 +37,7 @@ impl Display for Statement {
 }
 
 impl Statement {
-    pub fn eval(&self, env: &mut Environment) -> Object {
+    pub fn eval(&self, env: &Rc<RefCell<Environment>>) -> Object {
         match self {
             Statement::Expression(exp) => exp.eval(env),
             Statement::Return(r) => {
@@ -46,16 +46,18 @@ impl Statement {
             }
             Statement::Let(ident, exp) => {
                 let val = exp.eval(env);
-                env.set(ident.clone(), val.clone());
+                env.borrow_mut().set(ident.clone(), val.clone());
 
                 val
             }
             Statement::Assignment(ident, exp) => {
                 let val = exp.eval(env);
 
-                match env.get(ident.clone()) {
+                let existing = env.borrow().get(ident.clone());
+
+                match existing {
                     Some(_) => {
-                        env.set(ident.clone(), val.clone());
+                        env.borrow_mut().set(ident.clone(), val.clone());
                         val
                     }
                     None => Object::Error(format!("Identifier not found: {}", ident)),

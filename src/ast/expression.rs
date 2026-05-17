@@ -1,7 +1,9 @@
 use std::{
+    cell::{Ref, RefCell},
     collections::{BTreeMap, HashMap},
     fmt::Display,
     hash::Hash,
+    rc::Rc,
 };
 
 use crate::eval::{
@@ -103,7 +105,7 @@ pub enum Expression {
 }
 
 impl Expression {
-    pub fn eval(&self, env: &mut Environment) -> Object {
+    pub fn eval(&self, env: &Rc<RefCell<Environment>>) -> Object {
         match self {
             Expression::Error(s) => Object::Error(s.clone()),
             Expression::Literal(l) => l.eval(),
@@ -246,8 +248,8 @@ impl Expression {
                     (_, _) => Object::Error(String::from("condition did not evaluate to boolean")),
                 }
             }
-            Expression::Identifier(ident) => match env.get(ident.clone()) {
-                Some(obj) => obj,
+            Expression::Identifier(ident) => match &env.borrow_mut().get(ident.clone()) {
+                Some(obj) => obj.clone(),
                 None => Object::Error(format!("identifier not found: {}", ident)),
             },
             Expression::Function {
@@ -260,16 +262,18 @@ impl Expression {
                         name: Some(i.clone()),
                         parameters: parameters.to_vec().clone(),
                         body: body.to_vec().clone(),
+                        env: env.clone(),
                     },
                     None => Object::Function {
                         name: None,
                         parameters: parameters.to_vec().clone(),
                         body: body.to_vec().clone(),
+                        env: env.clone(),
                     },
                 };
 
                 match identifier {
-                    Some(i) => env.set(i.clone(), fun.clone()),
+                    Some(i) => env.borrow_mut().set(i.clone(), fun.clone()),
                     None => {}
                 }
 
@@ -279,12 +283,10 @@ impl Expression {
                 function,
                 arguments,
             } => {
-                let mut function_context_env = env.clone();
-
-                let func = function.eval(&mut function_context_env);
+                let func = function.eval(env);
                 let args = arguments
                     .iter()
-                    .map(|arg| arg.eval(&mut function_context_env))
+                    .map(|arg| arg.eval(env))
                     .collect::<Vec<_>>();
 
                 match (func, &args) {
@@ -293,14 +295,16 @@ impl Expression {
                             name: _name,
                             parameters,
                             body,
+                            env: current_env,
                         },
                         _,
                     ) => {
+                        let next_env = Environment::new_enclosed(current_env.clone());
                         let mut has_error = false;
                         let mut error_idx = 0;
                         for (idx, param) in parameters.iter().enumerate() {
                             if let Some(arg) = args.get(idx) {
-                                function_context_env.set(param.clone(), arg.clone());
+                                next_env.borrow_mut().set(param.clone(), arg.clone());
                             } else {
                                 error_idx = idx;
                                 has_error = true;
@@ -312,7 +316,7 @@ impl Expression {
                             return Object::Error(format!("Missing parameter: {}", error_idx));
                         }
 
-                        match eval_function_block(&body, &mut function_context_env) {
+                        match eval_function_block(&body, &next_env) {
                             Some(r) => r,
                             None => Object::None,
                         }

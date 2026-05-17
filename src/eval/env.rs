@@ -1,10 +1,12 @@
 use crate::eval::object::Object;
-use std::collections::HashMap;
+use std::{cell::RefCell, collections::HashMap, fmt::Debug, rc::Rc};
 
 use super::builtin_functions;
 
+#[derive(Debug)]
 pub struct Environment {
     pub store: HashMap<String, Object>,
+    pub parent: Option<Rc<RefCell<Environment>>>,
 }
 
 impl Default for Environment {
@@ -18,8 +20,23 @@ impl Environment {
         builtin_functions()
     }
 
-    pub fn get(&mut self, name: String) -> Option<Object> {
-        self.store.get(name.as_str()).cloned()
+    pub fn new_enclosed(parent_env: Rc<RefCell<Environment>>) -> Rc<RefCell<Self>> {
+        Rc::new(RefCell::new(Self {
+            store: HashMap::new(),
+            parent: Some(parent_env),
+        }))
+    }
+
+    pub fn get(&self, name: String) -> Option<Object> {
+        let value_exists = self.store.get(name.as_str()).cloned();
+
+        match value_exists {
+            Some(value) => Some(value),
+            None => match &self.parent {
+                None => None,
+                Some(parent) => parent.borrow().get(name),
+            },
+        }
     }
 
     pub fn set(&mut self, name: String, val: Object) {
