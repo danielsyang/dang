@@ -73,9 +73,10 @@ pub fn eval_block(block: &Block, env: &mut Environment) -> Object {
     let mut result = Object::None;
 
     for sttm in block {
-        match sttm.eval(env) {
+        let evaluation = sttm.eval(env);
+        match evaluation {
             Object::Return(r) => return Object::Return(r),
-            _ => result = sttm.eval(env),
+            _ => result = evaluation,
         }
     }
 
@@ -84,7 +85,8 @@ pub fn eval_block(block: &Block, env: &mut Environment) -> Object {
 
 pub fn eval_function_block(block: &Block, env: &mut Environment) -> Option<Object> {
     for sttm in block {
-        match sttm.eval(env) {
+        let evaluation = sttm.eval(env);
+        match evaluation {
             Object::Return(r) => {
                 let mut result = r.as_ref().clone();
 
@@ -94,7 +96,7 @@ pub fn eval_function_block(block: &Block, env: &mut Environment) -> Option<Objec
 
                 return Some(result);
             }
-            _ => sttm.eval(env),
+            _ => evaluation,
         };
     }
 
@@ -333,6 +335,24 @@ mod test {
             let result = program.eval_statements(&mut env);
             assert_eq!(result.to_string(), expected.get(i).unwrap().to_string());
         }
+    }
+
+    #[test]
+    fn eval_block_runs_each_statement_once() {
+        let mut env = Environment::new();
+        let input = "
+            let i = 0;
+            let count = 0;
+            while (i < 5) {
+                count = count + 1;
+                i = i + 1;
+            }
+            count;
+            ";
+
+        let program = Parser::build_ast(input);
+        let result = program.eval_statements(&mut env);
+        assert_eq!(result.to_string(), "5");
     }
 
     #[test]
