@@ -67,14 +67,19 @@ impl PrettyDisplay for Statement {
             }
             Statement::Error(s) => write!(f, "error: ( {} )", s),
             Statement::While { condition, body } => {
+                let body_str = body
+                    .iter()
+                    .map(|s| WithInterner { value: s, interner }.to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ");
                 write!(
                     f,
-                    "while ( {} ) {{ {:?} }}",
+                    "while ( {} ) {{ [{}] }}",
                     WithInterner {
                         value: condition,
                         interner
                     },
-                    body
+                    body_str
                 )
             }
         }

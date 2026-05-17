@@ -1115,7 +1115,7 @@ mod test {
         ";
 
         let expected = [
-            "while ( < Left Ident (i) , Right Number (10) ) { [Let(Symbol(1), Literal(Number(0))), Assignment(Symbol(1), Literal(Number(11)))] }",
+            "while ( < Left Ident (i) , Right Number (10) ) { [Let a Number (0), = a Number (11)] }",
         ];
         let result = Parser::build_ast(input, &mut interner);
 
