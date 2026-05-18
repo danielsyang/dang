@@ -30,7 +30,7 @@ impl Lexer {
             return Some(Token::whitespace());
         }
 
-        if curr.is_alphabetic() {
+        if curr.is_alphabetic() || Lexer::is_ident_start(curr) {
             let word = self.consume_word(curr);
             match word.as_str() {
                 "let" => return Some(Token::new_let()),
@@ -72,7 +72,13 @@ impl Lexer {
             ';' => Some(Token::semicolon()),
             '+' => Some(Token::new(TokenType::PlusSign)),
             '-' => Some(Token::new(TokenType::MinusSign)),
-            '*' => Some(Token::new(TokenType::MultiplicationSign)),
+            '*' => match self.peek() {
+                Some('*') => {
+                    self.consume_char();
+                    Some(Token::exponent())
+                }
+                _ => Some(Token::new(TokenType::MultiplicationSign)),
+            },
             '/' => Some(Token::new(TokenType::SlashSign)),
             '{' => Some(Token::left_brace()),
             '}' => Some(Token::right_brace()),
@@ -141,7 +147,7 @@ impl Lexer {
 
             match self.peek() {
                 Some(d) => {
-                    if !d.is_alphanumeric() {
+                    if !d.is_alphanumeric() && !Lexer::is_ident_continue(d) {
                         break;
                     }
                 }
@@ -204,6 +210,14 @@ impl Lexer {
         };
 
         false
+    }
+
+    fn is_ident_continue(c: char) -> bool {
+        c.is_alphanumeric() || c == '_'
+    }
+
+    fn is_ident_start(c: char) -> bool {
+        c.is_alphabetic() || c == '_'
     }
 }
 
@@ -653,6 +667,7 @@ mod test {
 
         assert_eq!(expected, result)
     }
+
     #[test]
     fn dot_operator() {
         let input = "
@@ -669,6 +684,46 @@ mod test {
             Token::identifier(test_sym),
             Token::dot(),
             Token::identifier(interval_sym),
+            Token::semicolon(),
+            Token::eof(),
+        ];
+        let result = run_tokenizer(lex, &mut interner);
+
+        assert_eq!(expected, result)
+    }
+
+    #[test]
+    fn exponent_operator() {
+        let input = "2**2;";
+
+        let lex = Lexer::new(input);
+        let mut interner = Interner::new();
+
+        let expected: Vec<Token> = vec![
+            Token::int(2),
+            Token::exponent(),
+            Token::int(2),
+            Token::semicolon(),
+            Token::eof(),
+        ];
+        let result = run_tokenizer(lex, &mut interner);
+
+        assert_eq!(expected, result)
+    }
+
+    #[test]
+    fn snake_case_variable() {
+        let input = "var_name;_var;";
+
+        let lex = Lexer::new(input);
+        let mut interner = Interner::new();
+        let var_sym = interner.intern("var_name");
+        let var_underscore_sym = interner.intern("_var");
+
+        let expected: Vec<Token> = vec![
+            Token::identifier(var_sym),
+            Token::semicolon(),
+            Token::identifier(var_underscore_sym),
             Token::semicolon(),
             Token::eof(),
         ];

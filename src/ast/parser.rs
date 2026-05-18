@@ -25,9 +25,10 @@ enum Precedence {
     AndOr = 5,
     Sum = 6,
     Product = 7,
-    Prefix = 8,
-    Call = 9,
-    Index = 10,
+    Exponent = 8,
+    Prefix = 9,
+    Call = 10,
+    Index = 11,
 }
 
 pub struct Parser<'a> {
@@ -231,6 +232,9 @@ impl<'a> Parser<'a> {
                 }
                 TokenType::And => self.parse_infix_expression(left_exp, Operator::And),
                 TokenType::Or => self.parse_infix_expression(left_exp, Operator::Or),
+                TokenType::ExponentSign => {
+                    self.parse_infix_expression(left_exp, Operator::Exponent)
+                }
                 TokenType::LeftParen => self.parse_call_expression(left_exp),
                 TokenType::LeftBracket => self.parse_index_expression(left_exp),
                 TokenType::Dot => self.parse_dot_expression(left_exp),
@@ -510,13 +514,6 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_dot_expression(&mut self, left: Expression) -> Expression {
-        if !self.expect_next_token(TokenKind::Dot) {
-            return Expression::Error(format!(
-                "expected TokenType::Dot, got {:?}",
-                self.next_token
-            ));
-        }
-
         self.consume_token();
 
         let attribute = self.parse_expression(Precedence::Lowest);
@@ -611,6 +608,7 @@ impl<'a> Parser<'a> {
             TokenType::LeftParen => Precedence::Call as u8,
             TokenType::LeftBracket => Precedence::Index as u8,
             TokenType::Dot => Precedence::Dot as u8,
+            TokenType::ExponentSign => Precedence::Exponent as u8,
             _ => Precedence::Lowest as u8,
         }
     }
@@ -618,7 +616,14 @@ impl<'a> Parser<'a> {
 
 #[cfg(test)]
 mod test {
-    use crate::intern::interner::{Interner, WithInterner};
+    use crate::{
+        ast::{
+            expression::{Expression, Operator},
+            literal::Literal,
+            statement::Statement,
+        },
+        intern::interner::{Interner, WithInterner},
+    };
 
     use super::Parser;
 
@@ -1152,5 +1157,63 @@ mod test {
                 expected.get(i).unwrap().to_string()
             );
         }
+    }
+
+    #[test]
+    fn parse_exponent_expressions() {
+        let mut interner = Interner::new();
+
+        let input = "2**3;";
+        let result = Parser::build_ast(input, &mut interner);
+
+        assert_eq!(
+            result.statements,
+            vec![Statement::Expression(Expression::Infix(
+                Operator::Exponent,
+                Box::new(Expression::Literal(Literal::Number(2))),
+                Box::new(Expression::Literal(Literal::Number(3))),
+            ))]
+        )
+    }
+
+    #[test]
+    fn parse_exponent_expressions_identifier() {
+        let mut interner = Interner::new();
+
+        let var_sym = interner.intern("var");
+        let other_var_sym = interner.intern("other_var");
+
+        let input = "var**other_var;";
+        let result = Parser::build_ast(input, &mut interner);
+
+        assert_eq!(
+            result.statements,
+            vec![Statement::Expression(Expression::Infix(
+                Operator::Exponent,
+                Box::new(Expression::Identifier(var_sym)),
+                Box::new(Expression::Identifier(other_var_sym)),
+            ))]
+        )
+    }
+
+    #[test]
+    fn parse_exponent_expressions_associativity() {
+        let mut interner = Interner::new();
+
+        let input = "2**3**2;";
+        let result = Parser::build_ast(input, &mut interner);
+
+        assert_eq!(
+            result.statements,
+            vec![Statement::Expression(Expression::Infix(
+                Operator::Exponent,
+                Box::new(Expression::Literal(Literal::Number(2))),
+                Box::new(Expression::Infix(
+                    Operator::Exponent,
+                    Box::new(Expression::Literal(Literal::Number(3))),
+                    Box::new(Expression::Literal(Literal::Number(2)))
+                )),
+            ))]
+        )
     }
 }

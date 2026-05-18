@@ -36,6 +36,7 @@ pub enum Operator {
     LessThanOrEqual,
     And,
     Or,
+    Exponent,
 }
 
 impl Display for Operator {
@@ -53,6 +54,7 @@ impl Display for Operator {
             Operator::LessThanOrEqual => write!(f, "<="),
             Operator::And => write!(f, "&&"),
             Operator::Or => write!(f, "||"),
+            Operator::Exponent => write!(f, "**"),
         }
     }
 }
@@ -330,6 +332,39 @@ impl Expression {
                     },
                     (Operator::Or, _, _) => match (&left, &right) {
                         (Object::Boolean(l), Object::Boolean(r)) => Object::Boolean(*l || *r),
+                        _ => Object::Error(format!(
+                            "Can only perform operation {} on (numbers | boolean), got: {} and {} ",
+                            op,
+                            WithInterner {
+                                value: &left,
+                                interner
+                            },
+                            WithInterner {
+                                value: &right,
+                                interner
+                            },
+                        )),
+                    },
+                    (Operator::Exponent, _, _) => match (&left, &right) {
+                        (Object::Number(l), Object::Number(r)) => {
+                            let val = l.checked_pow(*r as u32);
+
+                            match val {
+                                Some(v) => Object::Number(v),
+                                None => Object::Error(format!(
+                                    "Can only perform operation {} on (numbers), got: {} and {} ",
+                                    op,
+                                    WithInterner {
+                                        value: &left,
+                                        interner
+                                    },
+                                    WithInterner {
+                                        value: &right,
+                                        interner
+                                    },
+                                )),
+                            }
+                        }
                         _ => Object::Error(format!(
                             "Can only perform operation {} on (numbers | boolean), got: {} and {} ",
                             op,

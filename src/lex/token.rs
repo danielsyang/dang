@@ -39,6 +39,7 @@ pub enum TokenType {
     MultiplicationSign,
     SlashSign,
     Asssign,
+    ExponentSign,
     // -> !
     BangSign,
     LT,
@@ -102,6 +103,7 @@ impl TokenType {
             TokenType::And => TokenKind::And,
             TokenType::Or => TokenKind::Or,
             TokenType::While => TokenKind::While,
+            TokenType::ExponentSign => TokenKind::ExponentSign,
         }
     }
 }
@@ -283,6 +285,12 @@ impl Token {
             kind: TokenType::Dot,
         }
     }
+
+    pub fn exponent() -> Self {
+        Self {
+            kind: TokenType::ExponentSign,
+        }
+    }
 }
 
 // Enum that mirrors TokenType but without the values.
@@ -323,6 +331,7 @@ pub enum TokenKind {
     MultiplicationSign,
     SlashSign,
     Asssign,
+    ExponentSign,
     // -> !
     BangSign,
     LT,
