@@ -14,6 +14,7 @@ use crate::{
 };
 
 mod ast;
+mod compiler;
 mod eval;
 mod intern;
 mod lex;

@@ -9,7 +9,7 @@ use crate::{
 type BuiltinFunction = fn(Vec<Object>, &Interner) -> Object;
 type Elements = Vec<Object>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Object {
     None,
     Number(i64),

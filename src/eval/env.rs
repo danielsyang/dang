@@ -6,7 +6,7 @@ use std::{cell::RefCell, collections::HashMap, fmt::Debug, rc::Rc};
 
 use super::builtin_functions;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Environment {
     pub store: HashMap<Symbol, Object>,
     pub parent: Option<Rc<RefCell<Environment>>>,
