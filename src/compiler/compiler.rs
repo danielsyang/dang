@@ -54,6 +54,9 @@ impl Compiler {
 
                 match op {
                     Operator::Plus => self.emit(Opcode::OpAdd, &[]),
+                    Operator::Minus => self.emit(Opcode::OpSub, &[]),
+                    Operator::Multiply => self.emit(Opcode::OpMul, &[]),
+                    Operator::Divide => self.emit(Opcode::OpDiv, &[]),
                     _ => todo!("{} operator not implement", op),
                 };
             }

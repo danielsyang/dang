@@ -9,6 +9,9 @@ use crate::{
 type BuiltinFunction = fn(Vec<Object>, &Interner) -> Object;
 type Elements = Vec<Object>;
 
+// Mute "warning: function pointer comparisons do not produce meaningful results since their addresses are not guaranteed to be unique" for now
+// Builtins are never compared by value; the derived PartialEq only compares fn pointers here.
+#[allow(unpredictable_function_pointer_comparisons)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Object {
     None,

@@ -7,6 +7,9 @@ pub enum Opcode {
     Constant = 0,
     OpAdd = 1,
     OpPop = 2,
+    OpSub = 3,
+    OpMul = 4,
+    OpDiv = 5,
 }
 
 pub struct Definition {
@@ -29,6 +32,18 @@ impl Opcode {
                 name: "OpPop",
                 operands_widths: &[],
             },
+            Opcode::OpSub => Definition {
+                name: "OpSub",
+                operands_widths: &[],
+            },
+            Opcode::OpMul => Definition {
+                name: "OpMul",
+                operands_widths: &[],
+            },
+            Opcode::OpDiv => Definition {
+                name: "OpDiv",
+                operands_widths: &[],
+            },
         }
     }
 
@@ -49,16 +64,15 @@ impl Opcode {
 
             match width {
                 None => {}
-                Some(val) => match val {
-                    2 => {
+                Some(val) => {
+                    if *val == 2 {
                         let o = *op as u16;
 
                         for byte in o.to_be_bytes() {
                             instruction.push(byte);
                         }
                     }
-                    _ => {}
-                },
+                }
             };
         }
 
@@ -80,6 +94,9 @@ impl TryFrom<u8> for Opcode {
             0 => Ok(Opcode::Constant),
             1 => Ok(Opcode::OpAdd),
             2 => Ok(Opcode::OpPop),
+            3 => Ok(Opcode::OpSub),
+            4 => Ok(Opcode::OpMul),
+            5 => Ok(Opcode::OpDiv),
             rest => Err(rest),
         }
     }
@@ -112,6 +129,21 @@ mod test {
                 op: Opcode::OpPop,
                 operands: vec![],
                 expected: vec![Opcode::OpPop as u8],
+            },
+            Test {
+                op: Opcode::OpSub,
+                operands: vec![],
+                expected: vec![Opcode::OpSub as u8],
+            },
+            Test {
+                op: Opcode::OpMul,
+                operands: vec![],
+                expected: vec![Opcode::OpMul as u8],
+            },
+            Test {
+                op: Opcode::OpDiv,
+                operands: vec![],
+                expected: vec![Opcode::OpDiv as u8],
             },
         ];
 

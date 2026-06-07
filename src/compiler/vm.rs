@@ -9,6 +9,8 @@ use crate::{
 #[derive(Debug)]
 pub enum VmError {
     StackOverflow,
+    InvalidOperation,
+    UnexpectedError,
 }
 
 pub struct VM<'a> {
@@ -53,48 +55,11 @@ impl<'a> VM<'a> {
             let operation = Opcode::try_from(*position);
 
             match operation {
-                Ok(opcode) => match opcode {
-                    Opcode::OpAdd => {
-                        let right = self.pop();
-                        let left = self.pop();
-
-                        match (left, right) {
-                            (Object::Number(left_val), Object::Number(right_val)) => {
-                                let result = left_val + right_val;
-
-                                match self.push(Object::Number(result)) {
-                                    Ok(_) => {}
-                                    Err(err) => {
-                                        panic!("Something went wrong {:?}", err)
-                                    }
-                                };
-                            }
-                            _ => {
-                                todo!("To be implemented")
-                            }
-                        }
-                    }
-                    Opcode::Constant => {
-                        let const_index =
-                            u16::from_be_bytes([self.instructions[ip], self.instructions[ip + 1]]);
-                        ip += 2;
-
-                        match self.constants.get(const_index as usize) {
-                            Some(val) => match self.push(val.clone()) {
-                                Ok(_) => {}
-                                Err(err) => {
-                                    println!("Got an error: {:?}", err)
-                                }
-                            },
-                            None => {
-                                panic!("something went wrong, const_index: {}", const_index)
-                            }
-                        }
-                    }
-                    Opcode::OpPop => {
-                        self.pop();
-                    }
-                },
+                Ok(opcode) => {
+                    ip = self
+                        .execute_operation(opcode, ip)
+                        .unwrap_or_else(|err| panic!("Invalid operation {:?}", err));
+                }
                 Err(err) => {
                     panic!("Operation not implemented yet: {}", err)
                 }
@@ -129,6 +94,50 @@ impl<'a> VM<'a> {
             None => panic!("Nothing to pop, something went wrong"),
         }
     }
+
+    fn execute_operation(&mut self, opcode: Opcode, mut ip: usize) -> Result<usize, VmError> {
+        let mut err: Option<VmError> = None;
+
+        match opcode {
+            Opcode::Constant => {
+                let const_index =
+                    u16::from_be_bytes([self.instructions[ip], self.instructions[ip + 1]]);
+                ip += 2;
+
+                match self.constants.get(const_index as usize) {
+                    Some(val) => self.push(val.clone())?,
+                    None => {
+                        err = Some(VmError::UnexpectedError);
+                    }
+                }
+            }
+            Opcode::OpAdd => self.execute_binary_operation(|x, y| x + y)?,
+            Opcode::OpSub => self.execute_binary_operation(|x, y| x - y)?,
+            Opcode::OpMul => self.execute_binary_operation(|x, y| x * y)?,
+            Opcode::OpDiv => self.execute_binary_operation(|x, y| x / y)?,
+            Opcode::OpPop => {
+                self.pop();
+            }
+        };
+
+        match err {
+            Some(err) => Err(err),
+            None => Ok(ip),
+        }
+    }
+
+    fn execute_binary_operation(&mut self, op: impl Fn(i64, i64) -> i64) -> Result<(), VmError> {
+        let right = self.pop();
+        let left = self.pop();
+
+        match (left, right) {
+            (Object::Number(left_val), Object::Number(right_val)) => {
+                let result = op(left_val, right_val);
+                self.push(Object::Number(result))
+            }
+            _ => Err(VmError::InvalidOperation),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -158,6 +167,22 @@ mod test {
             VmTestCase {
                 input: "1 + 2",
                 expected: Object::Number(3),
+            },
+            VmTestCase {
+                input: "5 - 1",
+                expected: Object::Number(4),
+            },
+            VmTestCase {
+                input: "4 * 4",
+                expected: Object::Number(16),
+            },
+            VmTestCase {
+                input: "8 / 4",
+                expected: Object::Number(2),
+            },
+            VmTestCase {
+                input: "50 / 2 * 2 + 10 - 5",
+                expected: Object::Number(55),
             },
         ];
 
