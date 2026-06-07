@@ -147,62 +147,28 @@ mod test {
         ast::parser::Parser, compiler::compiler::Compiler, eval::object::Object,
         intern::interner::Interner,
     };
+    use rstest::rstest;
 
-    struct VmTestCase {
-        input: &'static str,
-        expected: Object,
-    }
+    #[rstest]
+    #[case::base("1", Object::Number(1))]
+    #[case::addition("1 + 2", Object::Number(3))]
+    #[case::subtraction("5 - 1", Object::Number(4))]
+    #[case::multiplication("4 * 4", Object::Number(16))]
+    #[case::division("8 / 4", Object::Number(2))]
+    #[case::all_in_one("50 / 2 * 2 + 10 - 5", Object::Number(55))]
+    #[case::parenthesis("5 * (2 + 10)", Object::Number(60))]
+    fn test_integer_arithmetic(#[case] input: &str, #[case] expected: Object) {
+        let mut interner = Interner::new();
 
-    #[test]
-    fn test_integer_arithmetic() {
-        let tests: Vec<VmTestCase> = vec![
-            VmTestCase {
-                input: "1",
-                expected: Object::Number(1),
-            },
-            VmTestCase {
-                input: "2",
-                expected: Object::Number(2),
-            },
-            VmTestCase {
-                input: "1 + 2",
-                expected: Object::Number(3),
-            },
-            VmTestCase {
-                input: "5 - 1",
-                expected: Object::Number(4),
-            },
-            VmTestCase {
-                input: "4 * 4",
-                expected: Object::Number(16),
-            },
-            VmTestCase {
-                input: "8 / 4",
-                expected: Object::Number(2),
-            },
-            VmTestCase {
-                input: "50 / 2 * 2 + 10 - 5",
-                expected: Object::Number(55),
-            },
-        ];
+        let program = Parser::build_ast(&input, &mut interner);
+        let mut compiler = Compiler::new();
+        compiler.compile(&program);
 
-        run_vm_tests(tests);
-    }
+        let bytecode = compiler.to_bytecode();
 
-    fn run_vm_tests(tests: Vec<VmTestCase>) {
-        for tt in tests {
-            let mut interner = Interner::new();
+        let mut vm = VM::new(&bytecode);
+        vm.run();
 
-            let program = Parser::build_ast(&tt.input, &mut interner);
-            let mut compiler = Compiler::new();
-            compiler.compile(&program);
-
-            let bytecode = compiler.to_bytecode();
-
-            let mut vm = VM::new(&bytecode);
-            vm.run();
-
-            assert_eq!(vm.last_popped_element(), &tt.expected);
-        }
+        assert_eq!(vm.last_popped_element(), &expected);
     }
 }
