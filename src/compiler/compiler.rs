@@ -6,7 +6,7 @@ use crate::{
     },
     compiler::code::{
         Instructions,
-        Opcode::{self, OpAdd},
+        Opcode::{self},
     },
     eval::{object::Object, program::Program},
 };
@@ -35,13 +35,14 @@ impl Compiler {
             match sttm {
                 Statement::Expression(expr) => {
                     self.compile_expression(expr);
+                    self.emit(Opcode::OpPop, &[(self.instructions.len() - 1) as u16]);
                 }
                 _ => todo!("TODO: not implemented."),
             }
         }
     }
 
-    fn compile_statement(&self, stmt: &Statement) {
+    fn _compile_statement(&self, _stmt: &Statement) {
         todo!("TODO: not implemented.")
     }
 
@@ -115,6 +116,7 @@ mod test {
                 Opcode::Constant.make(&[0]),
                 Opcode::Constant.make(&[1]),
                 Opcode::OpAdd.make(&[]),
+                Opcode::OpPop.make(&[]),
             ],
         }];
 

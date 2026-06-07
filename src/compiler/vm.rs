@@ -16,7 +16,7 @@ pub struct VM<'a> {
     instructions: &'a Instructions,
 
     stack: Vec<Object>,
-    sp: usize,
+    last_popped_stack_elem: Option<Object>,
 }
 
 const MAX_STACK_SIZE: usize = 2048;
@@ -28,22 +28,14 @@ impl<'a> VM<'a> {
             instructions: &bytecode.instructions,
 
             stack: vec![],
-            sp: 0,
+            last_popped_stack_elem: None,
         }
     }
 
     pub fn stack_top(&self) -> &Object {
-        match self.sp {
-            0 => &Object::None,
-            _ => {
-                let val = self.stack.get(self.sp - 1);
-                match val {
-                    None => {
-                        panic!("Not sure what to do, panicking for now.")
-                    }
-                    Some(v) => v,
-                }
-            }
+        match self.stack.last() {
+            None => &Object::None,
+            Some(val) => val,
         }
     }
 
@@ -81,8 +73,6 @@ impl<'a> VM<'a> {
                                 todo!("To be implemented")
                             }
                         }
-
-                        ip += 1;
                     }
                     Opcode::Constant => {
                         let const_index =
@@ -101,6 +91,9 @@ impl<'a> VM<'a> {
                             }
                         }
                     }
+                    Opcode::OpPop => {
+                        self.pop();
+                    }
                 },
                 Err(err) => {
                     panic!("Operation not implemented yet: {}", err)
@@ -109,13 +102,19 @@ impl<'a> VM<'a> {
         }
     }
 
+    pub fn last_popped_element(&self) -> &Object {
+        match &self.last_popped_stack_elem {
+            Some(elem) => elem,
+            None => &Object::None,
+        }
+    }
+
     fn push(&mut self, obj: Object) -> Result<(), VmError> {
-        if self.sp >= MAX_STACK_SIZE {
+        if self.stack.len() >= MAX_STACK_SIZE {
             return Err(VmError::StackOverflow);
         }
 
-        self.stack.push(obj.clone());
-        self.sp += 1;
+        self.stack.push(obj);
 
         return Ok(());
     }
@@ -123,7 +122,7 @@ impl<'a> VM<'a> {
     fn pop(&mut self) -> Object {
         match self.stack.pop() {
             Some(val) => {
-                self.sp -= 1;
+                self.last_popped_stack_elem = Some(val.clone());
 
                 val
             }
@@ -178,7 +177,7 @@ mod test {
             let mut vm = VM::new(&bytecode);
             vm.run();
 
-            assert_eq!(vm.stack_top(), &tt.expected);
+            assert_eq!(vm.last_popped_element(), &tt.expected);
         }
     }
 }

@@ -6,6 +6,7 @@ pub type Instructions = Vec<u8>;
 pub enum Opcode {
     Constant = 0,
     OpAdd = 1,
+    OpPop = 2,
 }
 
 pub struct Definition {
@@ -22,6 +23,10 @@ impl Opcode {
             },
             Opcode::OpAdd => Definition {
                 name: "OpAdd",
+                operands_widths: &[],
+            },
+            Opcode::OpPop => Definition {
+                name: "OpPop",
                 operands_widths: &[],
             },
         }
@@ -74,6 +79,7 @@ impl TryFrom<u8> for Opcode {
         match value {
             0 => Ok(Opcode::Constant),
             1 => Ok(Opcode::OpAdd),
+            2 => Ok(Opcode::OpPop),
             rest => Err(rest),
         }
     }
@@ -99,8 +105,13 @@ mod test {
             },
             Test {
                 op: Opcode::OpAdd,
-                operands: vec![1],
-                expected: vec![1],
+                operands: vec![],
+                expected: vec![Opcode::OpAdd as u8],
+            },
+            Test {
+                op: Opcode::OpPop,
+                operands: vec![],
+                expected: vec![Opcode::OpPop as u8],
             },
         ];
 
