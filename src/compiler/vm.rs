@@ -96,8 +96,6 @@ impl<'a> VM<'a> {
     }
 
     fn execute_operation(&mut self, opcode: Opcode, mut ip: usize) -> Result<usize, VmError> {
-        let mut err: Option<VmError> = None;
-
         match opcode {
             Opcode::Constant => {
                 let const_index =
@@ -106,9 +104,7 @@ impl<'a> VM<'a> {
 
                 match self.constants.get(const_index as usize) {
                     Some(val) => self.push(val.clone())?,
-                    None => {
-                        err = Some(VmError::UnexpectedError);
-                    }
+                    None => return Err(VmError::UnexpectedError),
                 }
             }
             Opcode::OpAdd => self.execute_binary_operation(|x, y| x + y)?,
@@ -118,12 +114,11 @@ impl<'a> VM<'a> {
             Opcode::OpPop => {
                 self.pop();
             }
+            Opcode::OpTrue => self.push(Object::Boolean(true))?,
+            Opcode::OpFalse => self.push(Object::Boolean(false))?,
         };
 
-        match err {
-            Some(err) => Err(err),
-            None => Ok(ip),
-        }
+        Ok(ip)
     }
 
     fn execute_binary_operation(&mut self, op: impl Fn(i64, i64) -> i64) -> Result<(), VmError> {
@@ -157,7 +152,9 @@ mod test {
     #[case::division("8 / 4", Object::Number(2))]
     #[case::all_in_one("50 / 2 * 2 + 10 - 5", Object::Number(55))]
     #[case::parenthesis("5 * (2 + 10)", Object::Number(60))]
-    fn test_integer_arithmetic(#[case] input: &str, #[case] expected: Object) {
+    #[case::true_val("true", Object::Boolean(true))]
+    #[case::false_val("false", Object::Boolean(false))]
+    fn test_vm(#[case] input: &str, #[case] expected: Object) {
         let mut interner = Interner::new();
 
         let program = Parser::build_ast(&input, &mut interner);

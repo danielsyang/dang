@@ -35,7 +35,7 @@ impl Compiler {
             match sttm {
                 Statement::Expression(expr) => {
                     self.compile_expression(expr);
-                    self.emit(Opcode::OpPop, &[(self.instructions.len() - 1) as u16]);
+                    self.emit(Opcode::OpPop, &[]);
                 }
                 _ => todo!("TODO: not implemented."),
             }
@@ -64,6 +64,10 @@ impl Compiler {
                 let position = self.add_constant(*val);
                 self.emit(Opcode::Constant, &[position as u16]);
             }
+            Expression::Literal(Literal::Boolean(val)) => match val {
+                true => self.emit(Opcode::OpTrue, &[]),
+                false => self.emit(Opcode::OpFalse, &[]),
+            },
             _ => {
                 todo!("TODO: not implemented.")
             }
@@ -94,6 +98,8 @@ impl Compiler {
 
 #[cfg(test)]
 mod test {
+    use rstest::rstest;
+
     use crate::{
         ast::parser::Parser,
         compiler::{
@@ -104,40 +110,24 @@ mod test {
         intern::interner::Interner,
     };
 
-    struct CompilerTestCase {
-        input: &'static str,
-        expected_constants: Vec<Object>,
-        expected_instructions: Vec<Instructions>,
-    }
+    #[rstest]
+    #[case::arithmetic("1 + 2", vec![Object::Number(1), Object::Number(2)], vec![Opcode::Constant.make(&[0]),Opcode::Constant.make(&[1]),Opcode::OpAdd.make(&[]),Opcode::OpPop.make(&[])])]
+    #[case::true_boolean("true", vec![], vec![Opcode::OpTrue.make(&[]), Opcode::OpPop.make(&[])])]
+    #[case::false_boolean("false", vec![], vec![Opcode::OpFalse.make(&[]), Opcode::OpPop.make(&[])])]
+    fn test_compiler(
+        #[case] input: &'static str,
+        #[case] expected_constants: Vec<Object>,
+        #[case] expected_instructions: Vec<Instructions>,
+    ) {
+        let mut interner = Interner::new();
 
-    #[test]
-    fn test_integer_arithmatic() {
-        let tests: Vec<CompilerTestCase> = vec![CompilerTestCase {
-            input: "1 + 2",
-            expected_constants: vec![Object::Number(1), Object::Number(2)],
-            expected_instructions: vec![
-                Opcode::Constant.make(&[0]),
-                Opcode::Constant.make(&[1]),
-                Opcode::OpAdd.make(&[]),
-                Opcode::OpPop.make(&[]),
-            ],
-        }];
+        let program = Parser::build_ast(&input, &mut interner);
+        let mut compiler = Compiler::new();
+        compiler.compile(&program);
 
-        run_compiler_tests(tests);
-    }
+        let bytecode = compiler.to_bytecode();
 
-    fn run_compiler_tests(tests: Vec<CompilerTestCase>) {
-        for tt in tests {
-            let mut interner = Interner::new();
-
-            let program = Parser::build_ast(&tt.input, &mut interner);
-            let mut compiler = Compiler::new();
-            compiler.compile(&program);
-
-            let bytecode = compiler.to_bytecode();
-
-            assert_eq!(&tt.expected_instructions.concat(), &bytecode.instructions);
-            assert_eq!(&tt.expected_constants, &bytecode.constants);
-        }
+        assert_eq!(&expected_instructions.concat(), &bytecode.instructions);
+        assert_eq!(&expected_constants, &bytecode.constants);
     }
 }

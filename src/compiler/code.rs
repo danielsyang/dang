@@ -10,6 +10,8 @@ pub enum Opcode {
     OpSub = 3,
     OpMul = 4,
     OpDiv = 5,
+    OpTrue = 6,
+    OpFalse = 7,
 }
 
 pub struct Definition {
@@ -42,6 +44,14 @@ impl Opcode {
             },
             Opcode::OpDiv => Definition {
                 name: "OpDiv",
+                operands_widths: &[],
+            },
+            Opcode::OpTrue => Definition {
+                name: "OpTrue",
+                operands_widths: &[],
+            },
+            Opcode::OpFalse => Definition {
+                name: "OpFalse",
                 operands_widths: &[],
             },
         }
@@ -97,6 +107,8 @@ impl TryFrom<u8> for Opcode {
             3 => Ok(Opcode::OpSub),
             4 => Ok(Opcode::OpMul),
             5 => Ok(Opcode::OpDiv),
+            6 => Ok(Opcode::OpTrue),
+            7 => Ok(Opcode::OpFalse),
             rest => Err(rest),
         }
     }
@@ -104,53 +116,20 @@ impl TryFrom<u8> for Opcode {
 
 #[cfg(test)]
 mod test {
+    use rstest::rstest;
+
     use crate::compiler::code::Opcode;
 
-    struct Test {
-        op: Opcode,
-        operands: Vec<u16>,
-        expected: Vec<u8>,
-    }
-
-    #[test]
-    fn make_test() {
-        let tests: Vec<Test> = vec![
-            Test {
-                op: Opcode::Constant,
-                operands: vec![65534],
-                expected: vec![Opcode::Constant.into(), 255, 254],
-            },
-            Test {
-                op: Opcode::OpAdd,
-                operands: vec![],
-                expected: vec![Opcode::OpAdd as u8],
-            },
-            Test {
-                op: Opcode::OpPop,
-                operands: vec![],
-                expected: vec![Opcode::OpPop as u8],
-            },
-            Test {
-                op: Opcode::OpSub,
-                operands: vec![],
-                expected: vec![Opcode::OpSub as u8],
-            },
-            Test {
-                op: Opcode::OpMul,
-                operands: vec![],
-                expected: vec![Opcode::OpMul as u8],
-            },
-            Test {
-                op: Opcode::OpDiv,
-                operands: vec![],
-                expected: vec![Opcode::OpDiv as u8],
-            },
-        ];
-
-        for test in tests {
-            let instructions: Vec<u8> = test.op.make(&test.operands);
-
-            assert_eq!(instructions, test.expected);
-        }
+    #[rstest]
+    #[case(Opcode::Constant,vec![65534], vec![Opcode::Constant.into(), 255, 254])]
+    #[case(Opcode::OpAdd,vec![], vec![Opcode::OpAdd as u8])]
+    #[case(Opcode::OpSub,vec![], vec![Opcode::OpSub as u8])]
+    #[case(Opcode::OpMul,vec![], vec![Opcode::OpMul as u8])]
+    #[case(Opcode::OpDiv,vec![], vec![Opcode::OpDiv as u8])]
+    #[case(Opcode::OpTrue,vec![], vec![Opcode::OpTrue as u8])]
+    #[case(Opcode::OpFalse,vec![], vec![Opcode::OpFalse as u8])]
+    fn make_test(#[case] op: Opcode, #[case] operands: Vec<u16>, #[case] expected: Vec<u8>) {
+        let instructions: Vec<u8> = op.make(&operands);
+        assert_eq!(instructions, expected);
     }
 }
