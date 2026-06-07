@@ -2,7 +2,7 @@
 pub type Instructions = Vec<u8>;
 
 #[repr(u8)]
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Opcode {
     Constant = 0,
     OpAdd = 1,
@@ -67,6 +67,18 @@ impl From<Opcode> for u8 {
     }
 }
 
+impl TryFrom<u8> for Opcode {
+    type Error = u8;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(Opcode::Constant),
+            1 => Ok(Opcode::OpAdd),
+            rest => Err(rest),
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use crate::compiler::code::Opcode;
@@ -79,11 +91,18 @@ mod test {
 
     #[test]
     fn make_test() {
-        let tests: Vec<Test> = vec![Test {
-            op: Opcode::Constant,
-            operands: vec![65534],
-            expected: vec![Opcode::Constant.into(), 255, 254],
-        }];
+        let tests: Vec<Test> = vec![
+            Test {
+                op: Opcode::Constant,
+                operands: vec![65534],
+                expected: vec![Opcode::Constant.into(), 255, 254],
+            },
+            Test {
+                op: Opcode::OpAdd,
+                operands: vec![1],
+                expected: vec![1],
+            },
+        ];
 
         for test in tests {
             let instructions: Vec<u8> = test.op.make(&test.operands);

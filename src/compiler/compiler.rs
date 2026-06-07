@@ -4,11 +4,11 @@ use crate::{
         literal::Literal,
         statement::Statement,
     },
-    compiler::code::{Instructions, Opcode},
-    eval::{
-        object::Object,
-        program::{self, Program},
+    compiler::code::{
+        Instructions,
+        Opcode::{self, OpAdd},
     },
+    eval::{object::Object, program::Program},
 };
 
 pub struct Compiler {
@@ -18,19 +18,19 @@ pub struct Compiler {
 
 #[derive(PartialEq, Eq)]
 pub struct Bytecode {
-    instructions: Instructions,
-    constants: Vec<Object>,
+    pub instructions: Instructions,
+    pub constants: Vec<Object>,
 }
 
 impl Compiler {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             instructions: vec![],
             constants: vec![],
         }
     }
 
-    fn compile(&mut self, program: &Program) {
+    pub fn compile(&mut self, program: &Program) {
         for sttm in &program.statements {
             match sttm {
                 Statement::Expression(expr) => {
@@ -80,7 +80,7 @@ impl Compiler {
         }
     }
 
-    fn to_bytecode(&self) -> Bytecode {
+    pub fn to_bytecode(&self) -> Bytecode {
         Bytecode {
             instructions: self.instructions.clone(),
             constants: self.constants.clone(),

@@ -9,6 +9,7 @@ use clap::Parser as Parser_Clap;
 
 use crate::{
     ast::parser::Parser,
+    compiler::{compiler::Compiler, vm::VM},
     eval::env::Environment,
     intern::interner::{Interner, WithInterner},
 };
@@ -56,7 +57,7 @@ fn main() {
             println!("This is the Dan-Lang programming language!");
             println!("Feel free to type in commands");
 
-            let env = Rc::new(RefCell::new(Environment::new(&mut interner)));
+            // let env = Rc::new(RefCell::new(Environment::new(&mut interner)));
             loop {
                 print!(">> ");
 
@@ -66,15 +67,25 @@ fn main() {
 
                 let program = Parser::build_ast(&buffer, &mut interner);
 
-                let obj = program.eval_statements(&env, &mut interner);
+                // let obj = program.eval_statements(&env, &mut interner);
 
-                println!(
-                    "{}",
-                    WithInterner {
-                        value: &obj,
-                        interner: &interner
-                    }
-                );
+                let mut compiler = Compiler::new();
+                compiler.compile(&program);
+
+                let bytecode = compiler.to_bytecode();
+
+                let mut vm = VM::new(&bytecode);
+                vm.run();
+
+                // println!(
+                //     "{}",
+                //     WithInterner {
+                //         value: &obj,
+                //         interner: &interner
+                //     }
+                // );
+                //
+                println!("{:?}", vm.stack_top());
             }
         }
     }
