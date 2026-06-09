@@ -48,6 +48,11 @@ impl Compiler {
 
     fn compile_expression(&mut self, expr: &Expression) {
         match expr {
+            Expression::Infix(Operator::LessThan, left_expr, right_expr) => {
+                self.compile_expression(right_expr);
+                self.compile_expression(left_expr);
+                self.emit(Opcode::OpGreaterThan, &[])
+            }
             Expression::Infix(op, left_expr, right_expr) => {
                 self.compile_expression(left_expr);
                 self.compile_expression(right_expr);
@@ -57,6 +62,9 @@ impl Compiler {
                     Operator::Minus => self.emit(Opcode::OpSub, &[]),
                     Operator::Multiply => self.emit(Opcode::OpMul, &[]),
                     Operator::Divide => self.emit(Opcode::OpDiv, &[]),
+                    Operator::Equal => self.emit(Opcode::OpEqual, &[]),
+                    Operator::NotEqual => self.emit(Opcode::OpNotEqual, &[]),
+                    Operator::GreaterThan => self.emit(Opcode::OpGreaterThan, &[]),
                     _ => todo!("{} operator not implement", op),
                 };
             }
@@ -114,6 +122,10 @@ mod test {
     #[case::arithmetic("1 + 2", vec![Object::Number(1), Object::Number(2)], vec![Opcode::Constant.make(&[0]),Opcode::Constant.make(&[1]),Opcode::OpAdd.make(&[]),Opcode::OpPop.make(&[])])]
     #[case::true_boolean("true", vec![], vec![Opcode::OpTrue.make(&[]), Opcode::OpPop.make(&[])])]
     #[case::false_boolean("false", vec![], vec![Opcode::OpFalse.make(&[]), Opcode::OpPop.make(&[])])]
+    #[case::equal("1 == 2", vec![Object::Number(1), Object::Number(2)], vec![Opcode::Constant.make(&[0]), Opcode::Constant.make(&[1]), Opcode::OpEqual.make(&[]), Opcode::OpPop.make(&[])])]
+    #[case::greater_than("1 > 2", vec![Object::Number(1), Object::Number(2)], vec![Opcode::Constant.make(&[0]), Opcode::Constant.make(&[1]), Opcode::OpGreaterThan.make(&[]), Opcode::OpPop.make(&[])])]
+    #[case::less_than("1 < 2", vec![Object::Number(2), Object::Number(1)], vec![Opcode::Constant.make(&[0]), Opcode::Constant.make(&[1]), Opcode::OpGreaterThan.make(&[]), Opcode::OpPop.make(&[])])]
+    #[case::not_equal("1 != 2", vec![Object::Number(1), Object::Number(2)], vec![Opcode::Constant.make(&[0]), Opcode::Constant.make(&[1]), Opcode::OpNotEqual.make(&[]), Opcode::OpPop.make(&[])])]
     fn test_compiler(
         #[case] input: &'static str,
         #[case] expected_constants: Vec<Object>,

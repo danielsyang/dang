@@ -4,14 +4,17 @@ pub type Instructions = Vec<u8>;
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Opcode {
-    Constant = 0,
-    OpAdd = 1,
-    OpPop = 2,
-    OpSub = 3,
-    OpMul = 4,
-    OpDiv = 5,
-    OpTrue = 6,
-    OpFalse = 7,
+    Constant,
+    OpAdd,
+    OpPop,
+    OpSub,
+    OpMul,
+    OpDiv,
+    OpTrue,
+    OpFalse,
+    OpEqual,
+    OpNotEqual,
+    OpGreaterThan,
 }
 
 pub struct Definition {
@@ -52,6 +55,18 @@ impl Opcode {
             },
             Opcode::OpFalse => Definition {
                 name: "OpFalse",
+                operands_widths: &[],
+            },
+            Opcode::OpEqual => Definition {
+                name: "OpEqual",
+                operands_widths: &[],
+            },
+            Opcode::OpNotEqual => Definition {
+                name: "OpNotEqual",
+                operands_widths: &[],
+            },
+            Opcode::OpGreaterThan => Definition {
+                name: "OpGreaterThan",
                 operands_widths: &[],
             },
         }
@@ -109,6 +124,9 @@ impl TryFrom<u8> for Opcode {
             5 => Ok(Opcode::OpDiv),
             6 => Ok(Opcode::OpTrue),
             7 => Ok(Opcode::OpFalse),
+            8 => Ok(Opcode::OpEqual),
+            9 => Ok(Opcode::OpNotEqual),
+            10 => Ok(Opcode::OpGreaterThan),
             rest => Err(rest),
         }
     }

@@ -111,6 +111,9 @@ impl<'a> VM<'a> {
             Opcode::OpSub => self.execute_binary_operation(|x, y| x - y)?,
             Opcode::OpMul => self.execute_binary_operation(|x, y| x * y)?,
             Opcode::OpDiv => self.execute_binary_operation(|x, y| x / y)?,
+            Opcode::OpEqual => self.execute_equal_not_equal_operator(|x, y| x == y)?,
+            Opcode::OpNotEqual => self.execute_equal_not_equal_operator(|x, y| x != y)?,
+            Opcode::OpGreaterThan => self.execute_greater_operator()?,
             Opcode::OpPop => {
                 self.pop();
             }
@@ -129,6 +132,29 @@ impl<'a> VM<'a> {
             (Object::Number(left_val), Object::Number(right_val)) => {
                 let result = op(left_val, right_val);
                 self.push(Object::Number(result))
+            }
+            _ => Err(VmError::InvalidOperation),
+        }
+    }
+
+    fn execute_equal_not_equal_operator(
+        &mut self,
+        op: impl Fn(Object, Object) -> bool,
+    ) -> Result<(), VmError> {
+        let right = self.pop();
+        let left = self.pop();
+        let result = op(left, right);
+
+        self.push(Object::Boolean(result))
+    }
+
+    fn execute_greater_operator(&mut self) -> Result<(), VmError> {
+        let right = self.pop();
+        let left = self.pop();
+
+        match (left, right) {
+            (Object::Number(left_val), Object::Number(right_val)) => {
+                self.push(Object::Boolean(left_val > right_val))
             }
             _ => Err(VmError::InvalidOperation),
         }
@@ -154,6 +180,22 @@ mod test {
     #[case::parenthesis("5 * (2 + 10)", Object::Number(60))]
     #[case::true_val("true", Object::Boolean(true))]
     #[case::false_val("false", Object::Boolean(false))]
+    #[case::eq_true_integer("1 == 1", Object::Boolean(true))]
+    #[case::eq_false_integer("2 == 1", Object::Boolean(false))]
+    #[case::eq_true_boolean("true == true", Object::Boolean(true))]
+    #[case::eq_false_boolean("false == true", Object::Boolean(false))]
+    #[case::not_eq_true_integer("2 != 1", Object::Boolean(true))]
+    #[case::not_eq_false_integer("2 != 2", Object::Boolean(false))]
+    #[case::not_eq_true_boolean("true != false", Object::Boolean(true))]
+    #[case::not_eq_false_boolean("false != false", Object::Boolean(false))]
+    #[case::greater_true_integer("2 > 1", Object::Boolean(true))]
+    #[case::greater_false_integer("1 > 2", Object::Boolean(false))]
+    #[case::greater_eq_true_integer("(2 > 1) == true", Object::Boolean(true))]
+    #[case::greater_eq_false_integer("(1 > 2) == true", Object::Boolean(false))]
+    #[case::less_true_integer("1 < 2", Object::Boolean(true))]
+    #[case::less_false_integer("2 < 1", Object::Boolean(false))]
+    #[case::less_eq_true_integer("(1 < 2) == true", Object::Boolean(true))]
+    #[case::less_eq_false_integer("(2 < 1) == true", Object::Boolean(false))]
     fn test_vm(#[case] input: &str, #[case] expected: Object) {
         let mut interner = Interner::new();
 
