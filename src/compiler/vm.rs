@@ -96,13 +96,17 @@ impl<'a> VM<'a> {
     }
 
     fn execute_operation(&mut self, opcode: Opcode, mut ip: usize) -> Result<usize, VmError> {
+        let definition = opcode.lookup();
+
         match opcode {
             Opcode::Constant => {
-                let const_index =
-                    u16::from_be_bytes([self.instructions[ip], self.instructions[ip + 1]]);
-                ip += 2;
+                let (operands, bytes_read) =
+                    Opcode::read_operands(&definition, &self.instructions[ip..]);
 
-                match self.constants.get(const_index as usize) {
+                ip += bytes_read;
+
+                let const_index = operands[0] as usize;
+                match self.constants.get(const_index) {
                     Some(val) => self.push(val.clone())?,
                     None => return Err(VmError::UnexpectedError),
                 }

@@ -88,20 +88,39 @@ impl Opcode {
             let width = definition.operands_widths.get(i);
 
             match width {
-                None => {}
-                Some(val) => {
-                    if *val == 2 {
-                        let o = *op as u16;
-
-                        for byte in o.to_be_bytes() {
-                            instruction.push(byte);
-                        }
+                Some(2) => {
+                    let o = *op as u16;
+                    for byte in o.to_be_bytes() {
+                        instruction.push(byte);
                     }
                 }
+                _ => {}
             };
         }
 
         instruction
+    }
+
+    pub fn read_operands(definition: &Definition, instructions: &[u8]) -> (Vec<u16>, usize) {
+        let mut operands = Vec::with_capacity(definition.operands_widths.len());
+        let mut offset = 0;
+
+        for width in definition.operands_widths {
+            let width = *width as usize;
+
+            match width {
+                2 => {
+                    let value =
+                        u16::from_be_bytes([instructions[offset], instructions[offset + 1]]);
+                    operands.push(value);
+                }
+                _ => {}
+            }
+
+            offset += width;
+        }
+
+        (operands, offset)
     }
 }
 
