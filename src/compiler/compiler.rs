@@ -95,7 +95,7 @@ impl Compiler {
             } => {
                 self.compile_expression(condition);
 
-                let op_jump_pos = self.emit(Opcode::OpJumpNotTruthy, &[9999]);
+                let op_jump_not_truthy_pos = self.emit(Opcode::OpJumpNotTruthy, &[9999]);
 
                 self.compile(&consequence);
 
@@ -103,27 +103,26 @@ impl Compiler {
                     self.remove_last_pop();
                 }
 
+                let op_jump_pos = self.emit(Opcode::OpJump, &[9999]);
+
+                let after_consequence_pos = self.instructions.len();
+                self.change_operand(op_jump_not_truthy_pos, after_consequence_pos);
+
                 match alternative {
                     None => {
-                        let after_consequence_pos = self.instructions.len();
-                        self.change_operand(op_jump_pos, after_consequence_pos);
+                        self.emit(Opcode::OpNone, &[]);
                     }
                     Some(alt) => {
-                        let jump_pos = self.emit(Opcode::OpJump, &[9999]);
-
-                        let after_consequence_pos = self.instructions.len();
-                        self.change_operand(op_jump_pos, after_consequence_pos);
-
                         self.compile(&alt);
 
                         if self.is_last_instruction_pop() {
                             self.remove_last_pop();
                         }
-
-                        let after_alternative_pos = self.instructions.len();
-                        self.change_operand(jump_pos, after_alternative_pos);
                     }
                 }
+
+                let after_alternative_pos = self.instructions.len();
+                self.change_operand(op_jump_pos, after_alternative_pos);
             }
             _ => {
                 todo!("TODO: not implemented.")
@@ -208,7 +207,7 @@ mod test {
     use crate::{
         ast::parser::Parser,
         compiler::{
-            code::{Instructions, Opcode, format_instructions},
+            code::{Instructions, Opcode},
             compiler::Compiler,
         },
         eval::object::Object,
@@ -225,11 +224,29 @@ mod test {
     #[case::not_equal("1 != 2", vec![Object::Number(1), Object::Number(2)], vec![Opcode::Constant.make(&[0]), Opcode::Constant.make(&[1]), Opcode::OpNotEqual.make(&[]), Opcode::OpPop.make(&[])])]
     #[case::if_expression("if (true) { 10 }; 3333; ",
         vec![Object::Number(10), Object::Number(3333)],
-        vec![Opcode::OpTrue.make(&[]), Opcode::OpJumpNotTruthy.make(&[7]), Opcode::Constant.make(&[0]), Opcode::OpPop.make(&[]), Opcode::Constant.make(&[1]), Opcode::OpPop.make(&[])]
+        vec![
+            Opcode::OpTrue.make(&[]),
+            Opcode::OpJumpNotTruthy.make(&[10]),
+            Opcode::Constant.make(&[0]),
+            Opcode::OpJump.make(&[11]),
+            Opcode::OpNone.make(&[]),
+            Opcode::OpPop.make(&[]),
+            Opcode::Constant.make(&[1]),
+            Opcode::OpPop.make(&[])
+        ]
     )]
     #[case::if_else_expression("if (true) { 10 } else { 20 }; 3333; ",
         vec![Object::Number(10), Object::Number(20),Object::Number(3333)],
-        vec![Opcode::OpTrue.make(&[]), Opcode::OpJumpNotTruthy.make(&[10]), Opcode::Constant.make(&[0]), Opcode::OpJump.make(&[13]), Opcode::Constant.make(&[1]), Opcode::OpPop.make(&[]), Opcode::Constant.make(&[2]), Opcode::OpPop.make(&[])]
+        vec![
+            Opcode::OpTrue.make(&[]),
+            Opcode::OpJumpNotTruthy.make(&[10]),
+            Opcode::Constant.make(&[0]),
+            Opcode::OpJump.make(&[13]),
+            Opcode::Constant.make(&[1]),
+            Opcode::OpPop.make(&[]),
+            Opcode::Constant.make(&[2]),
+            Opcode::OpPop.make(&[])
+        ]
     )]
     fn test_compiler(
         #[case] input: &'static str,

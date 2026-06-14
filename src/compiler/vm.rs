@@ -67,6 +67,8 @@ impl<'a> VM<'a> {
         }
     }
 
+    // For testing
+    #[allow(dead_code)]
     pub fn last_popped_element(&self) -> &Object {
         match &self.last_popped_stack_elem {
             Some(elem) => elem,
@@ -123,7 +125,21 @@ impl<'a> VM<'a> {
             }
             Opcode::OpTrue => self.push(Object::Boolean(true))?,
             Opcode::OpFalse => self.push(Object::Boolean(false))?,
-            _ => {}
+            Opcode::OpJump => {
+                let (operands, _) = Opcode::read_operands(&definition, &self.instructions[ip..]);
+                ip = operands[0] as usize;
+            }
+            Opcode::OpJumpNotTruthy => {
+                let (operands, bytes_read) =
+                    Opcode::read_operands(&definition, &self.instructions[ip..]);
+
+                ip += bytes_read;
+
+                if !self.pop_check_if_truthy() {
+                    ip = operands[0] as usize
+                }
+            }
+            Opcode::OpNone => self.push(Object::None)?,
         };
 
         Ok(ip)
@@ -164,6 +180,15 @@ impl<'a> VM<'a> {
             _ => Err(VmError::InvalidOperation),
         }
     }
+
+    fn pop_check_if_truthy(&mut self) -> bool {
+        let condition = self.pop();
+
+        match condition {
+            Object::Boolean(true) => true,
+            _ => false,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -201,6 +226,10 @@ mod test {
     #[case::less_false_integer("2 < 1", Object::Boolean(false))]
     #[case::less_eq_true_integer("(1 < 2) == true", Object::Boolean(true))]
     #[case::less_eq_false_integer("(2 < 1) == true", Object::Boolean(false))]
+    #[case::if_expression("if (true) { 10 }", Object::Number(10))]
+    #[case::if_else_expression("if (true) { 10 } else { 20 }", Object::Number(10))]
+    #[case::else_expression("if (false) { 10 } else { 20 }", Object::Number(20))]
+    #[case::if_false_expression("if (false) { 10 }", Object::None)]
     fn test_vm(#[case] input: &str, #[case] expected: Object) {
         let mut interner = Interner::new();
 
