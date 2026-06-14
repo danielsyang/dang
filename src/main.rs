@@ -70,7 +70,7 @@ fn main() {
                 // let obj = program.eval_statements(&env, &mut interner);
 
                 let mut compiler = Compiler::new();
-                compiler.compile(&program);
+                compiler.compile(&program.statements);
 
                 let bytecode = compiler.to_bytecode();
 

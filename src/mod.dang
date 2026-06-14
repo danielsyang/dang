@@ -1,12 +1,5 @@
 
-let b = 30;
 
-let a = fn() {
-    b = 10;
-    return b + 10;
-};
+let result = if (5 > 3) { 5 } else { 3 };
 
-print("value of function", a());
-
-
-b + 1;
+print("value of function", result);

@@ -1,8 +1,10 @@
+use num_enum::{IntoPrimitive, TryFromPrimitive};
+
 // u8 -> byte
 pub type Instructions = Vec<u8>;
 
 #[repr(u8)]
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, TryFromPrimitive, IntoPrimitive)]
 pub enum Opcode {
     Constant,
     OpAdd,
@@ -15,6 +17,8 @@ pub enum Opcode {
     OpEqual,
     OpNotEqual,
     OpGreaterThan,
+    OpJumpNotTruthy,
+    OpJump,
 }
 
 pub struct Definition {
@@ -68,6 +72,14 @@ impl Opcode {
             Opcode::OpGreaterThan => Definition {
                 name: "OpGreaterThan",
                 operands_widths: &[],
+            },
+            Opcode::OpJumpNotTruthy => Definition {
+                name: "OpJumpNotTruthy",
+                operands_widths: &[2],
+            },
+            Opcode::OpJump => Definition {
+                name: "OpJump",
+                operands_widths: &[2],
             },
         }
     }
@@ -124,38 +136,44 @@ impl Opcode {
     }
 }
 
-impl From<Opcode> for u8 {
-    fn from(value: Opcode) -> Self {
-        value as u8
-    }
-}
+// For helping with debugging tests only for now
+#[allow(dead_code)]
+pub fn format_instructions(instructions: &Instructions) -> String {
+    let mut out = String::new();
+    let mut offset = 0;
 
-impl TryFrom<u8> for Opcode {
-    type Error = u8;
+    while offset < instructions.len() {
+        let opcode_from_byte: Opcode = match instructions.get(offset) {
+            Some(byte) => Opcode::try_from(*byte).unwrap(),
+            None => panic!("Something went wrong in pub fn format_instructions"),
+        };
 
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
-        match value {
-            0 => Ok(Opcode::Constant),
-            1 => Ok(Opcode::OpAdd),
-            2 => Ok(Opcode::OpPop),
-            3 => Ok(Opcode::OpSub),
-            4 => Ok(Opcode::OpMul),
-            5 => Ok(Opcode::OpDiv),
-            6 => Ok(Opcode::OpTrue),
-            7 => Ok(Opcode::OpFalse),
-            8 => Ok(Opcode::OpEqual),
-            9 => Ok(Opcode::OpNotEqual),
-            10 => Ok(Opcode::OpGreaterThan),
-            rest => Err(rest),
-        }
+        let definition = opcode_from_byte.lookup();
+
+        let (operands, bytes_read) =
+            Opcode::read_operands(&definition, &instructions[offset + 1..]);
+
+        let operand_string = operands
+            .iter()
+            .map(|x| format!(" {}", x))
+            .collect::<String>();
+
+        out.push_str(&format!("{:04} ", offset));
+        out.push_str(definition.name);
+        out.push_str(&operand_string);
+        out.push('\n');
+
+        offset += 1 + bytes_read;
     }
+
+    out
 }
 
 #[cfg(test)]
 mod test {
     use rstest::rstest;
 
-    use crate::compiler::code::Opcode;
+    use crate::compiler::code::{Instructions, Opcode, format_instructions};
 
     #[rstest]
     #[case(Opcode::Constant,vec![65534], vec![Opcode::Constant.into(), 255, 254])]
@@ -168,5 +186,13 @@ mod test {
     fn make_test(#[case] op: Opcode, #[case] operands: Vec<u16>, #[case] expected: Vec<u8>) {
         let instructions: Vec<u8> = op.make(&operands);
         assert_eq!(instructions, expected);
+    }
+
+    #[rstest]
+    #[case([Opcode::OpAdd.make(&[]), Opcode::OpPop.make(&[])].concat(), "0000 OpAdd\n0001 OpPop\n")]
+    #[case([Opcode::Constant.make(&[1]), Opcode::OpAdd.make(&[])].concat(), "0000 OpConstant 1\n0003 OpAdd\n`")]
+    fn test_format_instructions(#[case] bytes: Instructions, #[case] expected: String) {
+        let result = format_instructions(&bytes);
+        assert_eq!(result, expected);
     }
 }

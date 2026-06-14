@@ -123,6 +123,7 @@ impl<'a> VM<'a> {
             }
             Opcode::OpTrue => self.push(Object::Boolean(true))?,
             Opcode::OpFalse => self.push(Object::Boolean(false))?,
+            _ => {}
         };
 
         Ok(ip)
@@ -205,7 +206,7 @@ mod test {
 
         let program = Parser::build_ast(&input, &mut interner);
         let mut compiler = Compiler::new();
-        compiler.compile(&program);
+        compiler.compile(&program.statements);
 
         let bytecode = compiler.to_bytecode();
 
