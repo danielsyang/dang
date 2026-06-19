@@ -2,7 +2,10 @@ use num_enum::TryFromPrimitive;
 
 use crate::{
     ast::{
-        expression::{Expression, Operator},
+        expression::{
+            Expression, Operator,
+            Prefix::{self, Bang},
+        },
         literal::Literal,
         statement::Statement,
     },
@@ -88,6 +91,18 @@ impl Compiler {
                     self.emit(Opcode::OpFalse, &[]);
                 }
             },
+            Expression::Prefix(prefix, exp) => {
+                self.compile_expression(exp);
+
+                match prefix {
+                    Bang => {
+                        self.emit(Opcode::OpBang, &[]);
+                    }
+                    Prefix::Minus => {
+                        self.emit(Opcode::OpMinus, &[]);
+                    }
+                }
+            }
             Expression::If {
                 condition,
                 consequence,
@@ -218,6 +233,9 @@ mod test {
     #[case::arithmetic("1 + 2", vec![Object::Number(1), Object::Number(2)], vec![Opcode::Constant.make(&[0]),Opcode::Constant.make(&[1]),Opcode::OpAdd.make(&[]),Opcode::OpPop.make(&[])])]
     #[case::true_boolean("true", vec![], vec![Opcode::OpTrue.make(&[]), Opcode::OpPop.make(&[])])]
     #[case::false_boolean("false", vec![], vec![Opcode::OpFalse.make(&[]), Opcode::OpPop.make(&[])])]
+    #[case::bang_true_boolean("!true", vec![], vec![Opcode::OpTrue.make(&[]), Opcode::OpBang.make(&[]), Opcode::OpPop.make(&[])])]
+    #[case::bang_false_boolean("!false", vec![], vec![Opcode::OpFalse.make(&[]), Opcode::OpBang.make(&[]), Opcode::OpPop.make(&[])])]
+    #[case::minus_number("-5", vec![Object::Number(5)], vec![Opcode::Constant.make(&[0]), Opcode::OpMinus.make(&[]), Opcode::OpPop.make(&[])])]
     #[case::equal("1 == 2", vec![Object::Number(1), Object::Number(2)], vec![Opcode::Constant.make(&[0]), Opcode::Constant.make(&[1]), Opcode::OpEqual.make(&[]), Opcode::OpPop.make(&[])])]
     #[case::greater_than("1 > 2", vec![Object::Number(1), Object::Number(2)], vec![Opcode::Constant.make(&[0]), Opcode::Constant.make(&[1]), Opcode::OpGreaterThan.make(&[]), Opcode::OpPop.make(&[])])]
     #[case::less_than("1 < 2", vec![Object::Number(2), Object::Number(1)], vec![Opcode::Constant.make(&[0]), Opcode::Constant.make(&[1]), Opcode::OpGreaterThan.make(&[]), Opcode::OpPop.make(&[])])]

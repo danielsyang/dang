@@ -120,6 +120,7 @@ impl Expression {
                 match op {
                     Prefix::Bang => match right_exp {
                         Object::Boolean(b) => Object::Boolean(!b),
+                        Object::None => Object::Boolean(true),
                         _ => Object::Error(format!(
                             "expected Boolean, got: {}",
                             WithInterner {

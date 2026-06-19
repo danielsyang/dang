@@ -1,5 +1,5 @@
 
 
-let result = if (false) { 5 };
+let result = !(if (false) { 5 });
 
 print("value of function", result);

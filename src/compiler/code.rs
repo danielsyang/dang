@@ -20,6 +20,8 @@ pub enum Opcode {
     OpJumpNotTruthy,
     OpJump,
     OpNone,
+    OpBang,
+    OpMinus,
 }
 
 pub struct Definition {
@@ -84,6 +86,14 @@ impl Opcode {
             },
             Opcode::OpNone => Definition {
                 name: "OpNone",
+                operands_widths: &[],
+            },
+            Opcode::OpBang => Definition {
+                name: "OpBang",
+                operands_widths: &[],
+            },
+            Opcode::OpMinus => Definition {
+                name: "OpMinus",
                 operands_widths: &[],
             },
         }

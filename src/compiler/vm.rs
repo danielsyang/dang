@@ -123,6 +123,7 @@ impl<'a> VM<'a> {
             Opcode::OpPop => {
                 self.pop();
             }
+            Opcode::OpMinus => self.execute_minus_operator()?,
             Opcode::OpTrue => self.push(Object::Boolean(true))?,
             Opcode::OpFalse => self.push(Object::Boolean(false))?,
             Opcode::OpJump => {
@@ -140,6 +141,7 @@ impl<'a> VM<'a> {
                 }
             }
             Opcode::OpNone => self.push(Object::None)?,
+            Opcode::OpBang => self.execute_bang_operator()?,
         };
 
         Ok(ip)
@@ -181,6 +183,24 @@ impl<'a> VM<'a> {
         }
     }
 
+    fn execute_bang_operator(&mut self) -> Result<(), VmError> {
+        let obj = self.pop();
+        match obj {
+            Object::Boolean(v) => self.push(Object::Boolean(!v)),
+            Object::None => self.push(Object::Boolean(true)),
+            _ => Err(VmError::InvalidOperation),
+        }
+    }
+
+    fn execute_minus_operator(&mut self) -> Result<(), VmError> {
+        let obj = self.pop();
+
+        match obj {
+            Object::Number(v) => self.push(Object::Number(-v)),
+            _ => Err(VmError::InvalidOperation),
+        }
+    }
+
     fn pop_check_if_truthy(&mut self) -> bool {
         let condition = self.pop();
 
@@ -210,6 +230,9 @@ mod test {
     #[case::parenthesis("5 * (2 + 10)", Object::Number(60))]
     #[case::true_val("true", Object::Boolean(true))]
     #[case::false_val("false", Object::Boolean(false))]
+    #[case::bang_false_val("!true", Object::Boolean(false))]
+    #[case::bang_true_val("!false", Object::Boolean(true))]
+    #[case::minus_operation("-5 + -5", Object::Number(-10))]
     #[case::eq_true_integer("1 == 1", Object::Boolean(true))]
     #[case::eq_false_integer("2 == 1", Object::Boolean(false))]
     #[case::eq_true_boolean("true == true", Object::Boolean(true))]
@@ -230,6 +253,7 @@ mod test {
     #[case::if_else_expression("if (true) { 10 } else { 20 }", Object::Number(10))]
     #[case::else_expression("if (false) { 10 } else { 20 }", Object::Number(20))]
     #[case::if_false_expression("if (false) { 10 }", Object::None)]
+    #[case::if_none_expression("!(if (false) { 5; })", Object::Boolean(true))]
     fn test_vm(#[case] input: &str, #[case] expected: Object) {
         let mut interner = Interner::new();
 
