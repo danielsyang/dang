@@ -18,7 +18,6 @@ use crate::{
 
 struct EmittedInstruction {
     opcode: Opcode,
-    position: usize,
 }
 
 pub struct Compiler {
@@ -128,7 +127,7 @@ impl Compiler {
                         self.emit(Opcode::OpNone, &[]);
                     }
                     Some(alt) => {
-                        self.compile(&alt);
+                        self.compile(alt);
 
                         if self.is_last_instruction_pop() {
                             self.remove_last_pop();
@@ -146,7 +145,7 @@ impl Compiler {
     }
 
     fn add_constant(&mut self, val: i64) -> usize {
-        self.constants.push(Object::Number(val.clone()));
+        self.constants.push(Object::Number(val));
 
         self.constants.len() - 1
     }
@@ -167,10 +166,7 @@ impl Compiler {
     fn set_last_instructions(&mut self, op_code: Opcode) {
         self.previous_instruction = self.last_instruction.take();
 
-        self.last_instruction = Some(EmittedInstruction {
-            opcode: op_code,
-            position: self.instructions.len(),
-        });
+        self.last_instruction = Some(EmittedInstruction { opcode: op_code });
     }
 
     fn is_last_instruction_pop(&self) -> bool {

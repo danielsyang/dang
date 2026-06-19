@@ -83,7 +83,7 @@ impl<'a> VM<'a> {
 
         self.stack.push(obj);
 
-        return Ok(());
+        Ok(())
     }
 
     fn pop(&mut self) -> Object {
@@ -204,10 +204,7 @@ impl<'a> VM<'a> {
     fn pop_check_if_truthy(&mut self) -> bool {
         let condition = self.pop();
 
-        match condition {
-            Object::Boolean(true) => true,
-            _ => false,
-        }
+        matches!(condition, Object::Boolean(true))
     }
 }
 

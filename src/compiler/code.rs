@@ -105,7 +105,7 @@ impl Opcode {
         let mut instructions_len = 1;
 
         for op in definition.operands_widths {
-            instructions_len = instructions_len + op;
+            instructions_len += op;
         }
 
         let mut instruction: Instructions = Vec::with_capacity(instructions_len as usize);
@@ -116,7 +116,7 @@ impl Opcode {
 
             match width {
                 Some(2) => {
-                    let o = *op as u16;
+                    let o = *op;
                     for byte in o.to_be_bytes() {
                         instruction.push(byte);
                     }
