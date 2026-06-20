@@ -215,7 +215,7 @@ mod test {
 
     #[rstest]
     #[case([Opcode::OpAdd.make(&[]), Opcode::OpPop.make(&[])].concat(), "0000 OpAdd\n0001 OpPop\n")]
-    #[case([Opcode::Constant.make(&[1]), Opcode::OpAdd.make(&[])].concat(), "0000 OpConstant 1\n0003 OpAdd\n`")]
+    #[case([Opcode::Constant.make(&[1]), Opcode::OpAdd.make(&[])].concat(), "0000 OpConstant 1\n0003 OpAdd\n")]
     fn test_format_instructions(#[case] bytes: Instructions, #[case] expected: String) {
         let result = format_instructions(&bytes);
         assert_eq!(result, expected);
