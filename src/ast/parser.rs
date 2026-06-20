@@ -514,6 +514,13 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_dot_expression(&mut self, left: Expression) -> Expression {
+        if !self.expect_next_token(TokenKind::Dot) {
+            return Expression::Error(format!(
+                "expected TokenType::Dot, got {:?}",
+                self.next_token
+            ));
+        }
+
         self.consume_token();
 
         let attribute = self.parse_expression(Precedence::Lowest);
