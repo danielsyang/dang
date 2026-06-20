@@ -9,9 +9,12 @@ use crate::{
         literal::Literal,
         statement::Statement,
     },
-    compiler::code::{
-        Instructions,
-        Opcode::{self},
+    compiler::{
+        code::{
+            Instructions,
+            Opcode::{self},
+        },
+        symbol_table::SymbolTable,
     },
     eval::object::Object,
 };
@@ -23,6 +26,7 @@ struct EmittedInstruction {
 pub struct Compiler {
     instructions: Instructions,
     constants: Vec<Object>,
+    symbol_table: SymbolTable,
 
     last_instruction: Option<EmittedInstruction>,
     previous_instruction: Option<EmittedInstruction>,
@@ -39,6 +43,7 @@ impl Compiler {
         Self {
             instructions: vec![],
             constants: vec![],
+            symbol_table: SymbolTable::new(),
             last_instruction: None,
             previous_instruction: None,
         }
@@ -51,7 +56,15 @@ impl Compiler {
                     self.compile_expression(expr);
                     self.emit(Opcode::OpPop, &[]);
                 }
-                _ => todo!("TODO: not implemented."),
+                Statement::Let(name, expr) => {
+                    self.compile_expression(expr);
+
+                    let symbol = self.symbol_table.define(name);
+                    let index = symbol.index as u16;
+
+                    self.emit(Opcode::OpSetGlobal, &[index]);
+                }
+                _ => todo!("TODO: statement: {:?} not yet implemented.", sttm),
             }
         }
     }
@@ -138,8 +151,18 @@ impl Compiler {
                 let after_alternative_pos = self.instructions.len();
                 self.change_operand(op_jump_pos, after_alternative_pos);
             }
-            _ => {
-                todo!("TODO: not implemented.")
+            Expression::Identifier(ident) => {
+                let symbol = self
+                    .symbol_table
+                    .resolve(ident)
+                    .unwrap_or_else(|| panic!("identifier not found: {:?}", ident));
+
+                let index = symbol.index as u16;
+
+                self.emit(Opcode::OpGetGlobal, &[index]);
+            }
+            rest => {
+                todo!("Expression: {:?} not implemented.", rest)
             }
         }
     }
@@ -262,6 +285,45 @@ mod test {
             Opcode::OpPop.make(&[])
         ]
     )]
+    #[case::top_level_let_expression(
+        "
+        let one = 1;
+        let two = 2;
+        ",
+        vec![Object::Number(1), Object::Number(2)],
+        vec![
+            Opcode::Constant.make(&[0]),
+            Opcode::OpSetGlobal.make(&[0]),
+            Opcode::Constant.make(&[1]),
+            Opcode::OpSetGlobal.make(&[1]),
+        ])]
+    #[case::top_level_let_and_get_expression(
+        "
+        let one = 1;
+        one;
+        ",
+        vec![Object::Number(1)],
+        vec![
+            Opcode::Constant.make(&[0]),
+            Opcode::OpSetGlobal.make(&[0]),
+            Opcode::OpGetGlobal.make(&[0]),
+            Opcode::OpPop.make(&[])
+        ])]
+    #[case::re_assignment_expression(
+        "
+        let one = 1;
+        let two = one;
+        two;
+        ",
+        vec![Object::Number(1)],
+        vec![
+            Opcode::Constant.make(&[0]),
+            Opcode::OpSetGlobal.make(&[0]),
+            Opcode::OpGetGlobal.make(&[0]),
+            Opcode::OpSetGlobal.make(&[1]),
+            Opcode::OpGetGlobal.make(&[1]),
+            Opcode::OpPop.make(&[])
+        ])]
     fn test_compiler(
         #[case] input: &'static str,
         #[case] expected_constants: Vec<Object>,

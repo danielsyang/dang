@@ -54,6 +54,7 @@ fn main() {
             );
         }
         None => {
+            // TODO: One the compiler is done, go back to page 122 and fix REPL
             println!("This is the Dan-Lang programming language!");
             println!("Feel free to type in commands");
 

@@ -11,17 +11,20 @@ pub enum VmError {
     StackOverflow,
     InvalidOperation,
     UnexpectedError,
+    VariableNotFound,
 }
 
 pub struct VM<'a> {
     constants: &'a Vec<Object>,
     instructions: &'a Instructions,
 
+    globals: Vec<Object>,
     stack: Vec<Object>,
     last_popped_stack_elem: Option<Object>,
 }
 
 const MAX_STACK_SIZE: usize = 2048;
+const GLOBALS_SIZE: usize = 65536;
 
 impl<'a> VM<'a> {
     pub fn new(bytecode: &'a Bytecode) -> Self {
@@ -29,6 +32,7 @@ impl<'a> VM<'a> {
             constants: &bytecode.constants,
             instructions: &bytecode.instructions,
 
+            globals: vec![Object::None; GLOBALS_SIZE],
             stack: vec![],
             last_popped_stack_elem: None,
         }
@@ -111,6 +115,26 @@ impl<'a> VM<'a> {
                 match self.constants.get(const_index) {
                     Some(val) => self.push(val.clone())?,
                     None => return Err(VmError::UnexpectedError),
+                }
+            }
+            Opcode::OpSetGlobal => {
+                let (operands, bytes_read) =
+                    Opcode::read_operands(&definition, &self.instructions[ip..]);
+
+                ip += bytes_read;
+                let const_index = operands[0] as usize;
+                self.globals[const_index] = self.pop();
+            }
+            Opcode::OpGetGlobal => {
+                let (operands, bytes_read) =
+                    Opcode::read_operands(&definition, &self.instructions[ip..]);
+
+                ip += bytes_read;
+                let const_index = operands[0] as usize;
+
+                match self.globals.get(const_index) {
+                    Some(v) => self.push(v.clone())?,
+                    None => return Err(VmError::VariableNotFound),
                 }
             }
             Opcode::OpAdd => self.execute_binary_operation(|x, y| x + y)?,
@@ -251,6 +275,12 @@ mod test {
     #[case::else_expression("if (false) { 10 } else { 20 }", Object::Number(20))]
     #[case::if_false_expression("if (false) { 10 }", Object::None)]
     #[case::if_none_expression("!(if (false) { 5; })", Object::Boolean(true))]
+    #[case::simple_let_expression("let one = 1; one", Object::Number(1))]
+    #[case::multiple_let_expression("let one = 1; let two = 2; one + two", Object::Number(3))]
+    #[case::re_assignment_expressions(
+        "let one = 1; let two = one + one; let three = two; two + three",
+        Object::Number(4)
+    )]
     fn test_vm(#[case] input: &str, #[case] expected: Object) {
         let mut interner = Interner::new();
 

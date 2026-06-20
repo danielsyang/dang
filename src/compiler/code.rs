@@ -22,6 +22,8 @@ pub enum Opcode {
     OpNone,
     OpBang,
     OpMinus,
+    OpSetGlobal,
+    OpGetGlobal,
 }
 
 pub struct Definition {
@@ -95,6 +97,14 @@ impl Opcode {
             Opcode::OpMinus => Definition {
                 name: "OpMinus",
                 operands_widths: &[],
+            },
+            Opcode::OpGetGlobal => Definition {
+                name: "OpGetGlobal",
+                operands_widths: &[2],
+            },
+            Opcode::OpSetGlobal => Definition {
+                name: "OpSetGlobal",
+                operands_widths: &[2],
             },
         }
     }

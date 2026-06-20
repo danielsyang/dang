@@ -37,7 +37,7 @@ impl Interner {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct Symbol(u32);
+pub struct Symbol(pub u32);
 
 pub trait PrettyDisplay {
     fn pretty(&self, f: &mut std::fmt::Formatter, interner: &Interner) -> std::fmt::Result;
